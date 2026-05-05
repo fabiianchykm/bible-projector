@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель адміністратора</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="top-bar">
+            <div class="translation-selector">
+                <label for="translationSelect">Переклад:</label>
+                <select id="translationSelect"></select>
+            </div>
+            <div class="verse-controls">
+                <button id="openProjectorBtn">Відкрити вікно проектора</button>
+            </div>
+        </div>
+
+        <div class="navigation-header">
+            <button id="backBtn" style="display: none;">&larr; Назад</button>
+            <h2 id="currentSelectionHeader">Оберіть книгу</h2>
+        </div>
+
+        <!-- Контейнер для навігації -->
+        <div class="selection-container">
+            <div class="grid-view" id="booksContainer">
+                <!-- Книги будуть додані сюди -->
+            </div>
+            <div class="grid-view" id="chaptersContainer" style="display: none;">
+                <!-- Розділи будуть додані сюди -->
+            </div>
+            <div class="verses-list-view" id="versesContainer" style="display: none;">
+                <!-- Вірші будуть додані сюди -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Пошуковий оверлей -->
+    <div id="searchOverlay" class="search-overlay" style="display: none;">
+        <div class="search-overlay-content">
+            <input type="text" id="smartSearchInput" placeholder="Введіть книгу, розділ, вірш...">
+            <div id="suggestionsBox" class="suggestions-box"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM елементи ---
+        const translationSelect = document.getElementById('translationSelect');
+        const booksContainer = document.getElementById('booksContainer');
+        const chaptersContainer = document.getElementById('chaptersContainer');
+        const versesContainer = document.getElementById('versesContainer');
+        const backBtn = document.getElementById('backBtn');
+        const currentSelectionHeader = document.getElementById('currentSelectionHeader');
+        const searchOverlay = document.getElementById('searchOverlay');
+        const smartSearchInput = document.getElementById('smartSearchInput');
+        const suggestionsBox = document.getElementById('suggestionsBox');
+
+        // --- Стан програми ---
+        let selectedBook = null;
+        let selectedChapter = null;
+        let allBooks = []; // Кеш для списку книг
+        let firstSelectedVerse = null; // Для вибору діапазону
+        let activeSuggestionIndex = -1;
+        let userTypedQuery = ''; // Зберігаємо те, що ввів користувач
+
+        // --- Ініціалізація ---
+        document.addEventListener('DOMContentLoaded', loadTranslations);
+        document.addEventListener('keydown', handleGlobalKeyDown);
+        searchOverlay.addEventListener('click', (e) => {
+            // Закриваємо оверлей при кліку на фон
+            if (e.target === searchOverlay) {
+                hideSearchOverlay();
+            }
+        });
+
+        // --- Завантаження даних ---
+        async function loadTranslations() {
+            try {
+                const translations = await window.electronAPI.getTranslations();
+                translationSelect.innerHTML = '';
+                translations.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name.replace(/\.sqlite(3)?$/i, '');
+                    translationSelect.appendChild(option);
+                });
+                await showBooks();
+            } catch (error) {
+                console.error('Не вдалося завантажити переклади:', error);
+                alert('Помилка завантаження списку перекладів.');
+            }
+        }
+
+        // --- Навігація ---
+
+        // Крок 1: Показати книги
+        async function showBooks() {
+            try {
+                const books = await window.electronAPI.getBooks();
+                allBooks = books; // Зберігаємо книги в кеш для пошуку
+                booksContainer.innerHTML = '';
+                books.forEach(book => {
+                    const button = document.createElement('div');
+                    button.className = 'grid-item';
+                    button.textContent = book.short_name;
+                    button.onclick = () => handleBookClick(book);
+                    booksContainer.appendChild(button);
+                });
+                updateView('books');
+            } catch (error) {
+                console.error('Не вдалося завантажити книги з БД:', error);
+                booksContainer.innerHTML = `<p class="error-message">Помилка завантаження книг. Перевірте, чи обрано переклад.</p>`;
+            }
+        }
+
+        // Крок 2: Обробка кліку на книгу, показ розділів
+        async function handleBookClick(book) {
+            selectedBook = book;
+            try {
+                const chapters = await window.electronAPI.getChapters(book.id);
+                chaptersContainer.innerHTML = '';
+                chapters.forEach(chapterNum => {
+                    const button = document.createElement('div');
+                    button.className = 'grid-item';
+                    button.textContent = chapterNum;
+                    button.onclick = () => handleChapterClick(chapterNum);
+                    chaptersContainer.appendChild(button);
+                });
+                updateView('chapters');
+            } catch (error) {
+                console.error(`Помилка завантаження розділів для книги ${book.id}:`, error);
+                alert('Не вдалося завантажити розділи.');
+            }
+        }
+
+        // Крок 3: Обробка кліку на розділ, показ віршів
+        async function handleChapterClick(chapterNum) {
+            selectedChapter = chapterNum;
+            try {                
+                // Запитуємо текст всіх віршів у розділі
+                const versesWithText = await window.electronAPI.getChapterText({ bookId: selectedBook.id, chapter: chapterNum });
+                versesContainer.innerHTML = '';
+                firstSelectedVerse = null; // Скидаємо вибір діапазону
+
+                versesWithText.forEach(verse => {
+                    const verseItem = document.createElement('div');
+                    verseItem.className = 'verse-text-item';
+                    verseItem.dataset.verseNum = verse.verse;
+
+                    const verseNumberSpan = document.createElement('span');
+                    verseNumberSpan.className = 'verse-number';
+                    verseNumberSpan.textContent = verse.verse;
+
+                    const verseContentSpan = document.createElement('span');
+                    verseContentSpan.className = 'verse-content';
+                    verseContentSpan.textContent = verse.text.trim();
+
+                    const closeVerseBtn = document.createElement('button');
+                    closeVerseBtn.className = 'close-verse-btn';
+                    closeVerseBtn.innerHTML = '&times;';
+                    closeVerseBtn.onclick = (e) => {
+                        e.stopPropagation(); // Не викликати клік по віршу
+                        window.electronAPI.showVerse('');
+                        firstSelectedVerse = null;
+                        verseItem.classList.remove('selected');
+                    };
+
+                    verseItem.appendChild(verseNumberSpan);
+                    verseItem.appendChild(verseContentSpan);
+                    verseItem.appendChild(closeVerseBtn);
+
+                    verseItem.onclick = (event) => handleVerseClick(event, verse.verse);
+                    versesContainer.appendChild(verseItem);
+                });
+                updateView('verses');
+            } catch (error) {
+                console.error(`Помилка завантаження тексту розділу ${chapterNum}:`, error);
+                alert('Не вдалося завантажити текст розділу.');
+            }
+        }
+
+        // Крок 4: Обробка кліку на вірш
+        function handleVerseClick(event, verseNum) {
+            const clickedButton = event.currentTarget;
+ 
+            // Перевіряємо, чи цей вірш вже був вибраний
+            const isAlreadySelected = clickedButton.classList.contains('selected');
+ 
+            // Спочатку знімаємо виділення з усіх віршів
+            document.querySelectorAll('#versesContainer .verse-text-item.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+ 
+            if (isAlreadySelected) {
+                // Якщо клікнули на вже вибраний вірш, то просто знімаємо виділення і ховаємо текст.
+                window.electronAPI.showVerse('');
+                firstSelectedVerse = null; // Скидаємо вибір
+            } else {
+                // Якщо клікнули на новий вірш:
+                // 1. Виділяємо його.
+                clickedButton.classList.add('selected');
+                
+                // 2. Зберігаємо його як активний.
+                firstSelectedVerse = verseNum;
+ 
+                // 3. Показуємо його на проекторі.
+                showVerseOnProjector(String(verseNum));
+            }
+        }
+
+        // --- Логіка розумного пошуку ---
+        smartSearchInput.addEventListener('input', handleSmartSearchInput);
+        smartSearchInput.addEventListener('keydown', handleSearchKeyDown);
+
+        function handleSmartSearchInput(e) {
+            const query = e.target.value;
+            userTypedQuery = query; // Оновлюємо запит користувача
+
+            // Коли користувач друкує, скидаємо вибір стрілками,
+            // щоб Enter обробляв текст, а не попередній вибір.
+            activeSuggestionIndex = -1;
+            document.querySelectorAll('.suggestion-item.active').forEach(el => el.classList.remove('active'));
+
+            // Евристика: припиняємо показувати підказки, якщо запит містить пробіл,
+            // за яким іде цифра (це означає, що користувач почав вводити розділ).
+            if (/\s\d/.test(query)) {
+                hideSuggestions();
+                return;
+            }
+
+            const bookQuery = query.toLowerCase();
+            if (bookQuery.length === 0) {
+                hideSuggestions();
+                return;
+            }
+
+            const filteredBooks = allBooks.filter(book =>
+                book.short_name.toLowerCase().startsWith(bookQuery) ||
+                book.long_name.toLowerCase().startsWith(bookQuery)
+            );
+
+            showSuggestions(filteredBooks);
+        }
+
+        function showSuggestions(suggestions) {
+            if (suggestions.length === 0) {
+                hideSuggestions();
+                return;
+            }
+            suggestionsBox.innerHTML = '';
+            suggestions.forEach(book => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = `${book.long_name} (${book.short_name})`;
+                div.dataset.shortName = book.short_name;
+                div.onclick = () => selectSuggestion(book);
+                suggestionsBox.appendChild(div);
+            });
+            suggestionsBox.style.display = 'block';
+            activeSuggestionIndex = -1;
+        }
+
+        function hideSuggestions() {
+            suggestionsBox.style.display = 'none';
+        }
+
+        function selectSuggestion(book) {
+            // Переходимо до вибору розділу для обраної книги, як при кліку на "кубик"
+            handleBookClick(book);
+            // Ховаємо оверлей
+            hideSearchOverlay();
+        }
+
+        async function handleSearchKeyDown(e) {
+            const suggestions = suggestionsBox.querySelectorAll('.suggestion-item');
+
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (suggestionsBox.style.display === 'none') return;
+
+                // Remove current active class
+                if (activeSuggestionIndex > -1 && suggestions[activeSuggestionIndex]) {
+                    suggestions[activeSuggestionIndex].classList.remove('active');
+                }
+
+                if (e.key === 'ArrowDown') { activeSuggestionIndex++; } 
+                else { activeSuggestionIndex--; }
+
+                // Циклічна навігація: після останнього повертаємось до поля вводу, перед першим - до останнього
+                if (activeSuggestionIndex >= suggestions.length) { activeSuggestionIndex = -1; }
+                if (activeSuggestionIndex < -1) { activeSuggestionIndex = suggestions.length - 1; }
+
+                if (activeSuggestionIndex === -1) {
+                    // Жодна пропозиція не активна, повертаємо текст користувача
+                    smartSearchInput.value = userTypedQuery;
+                } else {
+                    const newActiveSuggestion = suggestions[activeSuggestionIndex];
+                    newActiveSuggestion.classList.add('active');
+                    smartSearchInput.value = newActiveSuggestion.dataset.shortName;
+                    newActiveSuggestion.scrollIntoView({ block: 'nearest' });
+                }
+                return;
+            }
+
+            if (e.key === 'Escape') {
+                hideSearchOverlay();
+                return;
+            }
+
+            if (e.key === 'Enter') {
+                e.preventDefault();
+
+                // If a suggestion is highlighted, select it
+                if (activeSuggestionIndex > -1 && suggestions[activeSuggestionIndex]) {
+                    suggestions[activeSuggestionIndex].click();
+                    return;
+                }
+
+                // Otherwise, proceed with the query in the input box
+                const query = smartSearchInput.value.trim();
+                if (!query) { hideSearchOverlay(); return; }
+
+                const parts = query.replace(':', ' ').split(' ').filter(p => p);
+
+                // Сценарій 1: Введено тільки назву книги (або її частину)
+                if (parts.length === 1) {
+                    const bookQuery = parts[0].toLowerCase();
+                    const book = allBooks.find(b =>
+                        b.short_name.toLowerCase() === bookQuery ||
+                        b.long_name.toLowerCase() === bookQuery
+                    ) || allBooks.find(b =>
+                        b.short_name.toLowerCase().startsWith(bookQuery) ||
+                        b.long_name.toLowerCase().startsWith(bookQuery)
+                    );
+
+                    if (book) {
+                        handleBookClick(book); // Переходимо до вибору розділу
+                        hideSearchOverlay();
+                    } else {
+                        alert(`Книгу "${parts[0]}" не знайдено.`);
+                    }
+                } else { // Сценарій 2: Введено повне посилання (книга, розділ, вірш)
+                    await parseAndShowVerse(query);
+                }
+            }
+        }
+
+        function showSearchOverlay(initialValue = '') {
+            searchOverlay.style.display = 'flex';
+            smartSearchInput.value = initialValue;
+            smartSearchInput.focus();
+            // Запускаємо подію 'input', щоб одразу показати підказки
+            if (initialValue) {
+                smartSearchInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+
+        function hideSearchOverlay() {
+            searchOverlay.style.display = 'none';
+            smartSearchInput.value = '';
+            hideSuggestions();
+        }
+
+        function handleGlobalKeyDown(e) {
+            // 1. Якщо оверлей відкритий, його власний обробник (handleSearchKeyDown) розбереться з Escape.
+            if (searchOverlay.style.display !== 'none') {
+                return;
+            }
+
+            // 2. Обробка повернення назад
+            if (e.key === 'Escape' || e.key === 'Delete' || e.key === 'Backspace') {
+                // Якщо кнопка "Назад" видима, імітуємо клік по ній
+                if (backBtn.style.display !== 'none') {
+                    e.preventDefault();
+                    backBtn.click();
+                }
+                // Зупиняємо подальшу обробку, щоб не відкрити пошук
+                return;
+            }
+
+            // 3. Відкриття пошуку
+            // Ігноруємо, якщо фокус на іншому полі вводу (напр. вибір перекладу)
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT') return;
+            // Ігноруємо, якщо натиснуто модифікатор
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            // Відкриваємо пошук, якщо натиснуто літеру або цифру
+            if (e.key.length === 1 && e.key.match(/[\p{L}\p{N}]/u)) {
+                e.preventDefault();
+                showSearchOverlay(e.key);
+            }
+        }
+
+
+        // --- Керування інтерфейсом ---
+
+        function updateView(viewName) {
+            // Ховаємо всі контейнери
+            booksContainer.style.display = 'none';
+            chaptersContainer.style.display = 'none';
+            versesContainer.style.display = 'none';
+            backBtn.style.display = 'none';
+
+            if (viewName === 'books') {
+                booksContainer.style.display = 'grid';
+                currentSelectionHeader.textContent = 'Оберіть книгу';
+                selectedBook = null;
+                selectedChapter = null;
+            } else if (viewName === 'chapters') {
+                chaptersContainer.style.display = 'grid';
+                backBtn.style.display = 'inline-block';
+                currentSelectionHeader.textContent = `${selectedBook.long_name} — Оберіть розділ`;
+            } else if (viewName === 'verses') {
+                versesContainer.style.display = 'flex';
+                backBtn.style.display = 'inline-block';
+                currentSelectionHeader.textContent = `${selectedBook.long_name} ${selectedChapter} — Оберіть вірш`;
+            }
+        }
+
+        // --- Обробники подій ---
+
+        document.getElementById('openProjectorBtn').addEventListener('click', () => {
+            console.log('Натиснуто кнопку "Відкрити вікно проектора"');
+            try {
+                window.electronAPI.openProjector();
+            } catch (e) {
+                console.error('Помилка виклику window.electronAPI.openProjector:', e);
+                alert('Не вдалося викликати API. Можливо, preload-скрипт не завантажився. Відкрийте консоль (Ctrl+Shift+I).');
+            }
+        });
+
+        translationSelect.addEventListener('change', async (event) => {
+            const newDbName = event.target.value;
+            const result = await window.electronAPI.switchTranslation(newDbName);
+            if (result.success) {
+                await showBooks(); // Перезавантажуємо книги для нового перекладу
+            } else {
+                alert(`Не вдалося переключити переклад: ${result.message}`);
+            }
+        });
+
+        backBtn.addEventListener('click', () => {
+            if (versesContainer.style.display !== 'none') {
+                updateView('chapters');
+            } else if (chaptersContainer.style.display !== 'none') {
+                updateView('books');
+            }
+        });
+
+        async function parseAndShowVerse(query) {
+            let foundBook = null;
+            let remainingQuery = '';
+            const queryLower = query.toLowerCase();
+
+            // Знаходимо найдовшу відповідну назву книги на початку запиту
+            for (const book of allBooks) {
+                const longName = book.long_name.toLowerCase();
+                const shortName = book.short_name.toLowerCase();
+
+                if (queryLower.startsWith(longName) && longName.length > (foundBook ? foundBook.name.length : 0)) {
+                    foundBook = { book: book, name: longName };
+                }
+                if (queryLower.startsWith(shortName) && shortName.length > (foundBook ? foundBook.name.length : 0)) {
+                    foundBook = { book: book, name: shortName };
+                }
+            }
+
+            if (!foundBook) {
+                alert(`Книгу не знайдено у запиті: "${query}"`);
+                return;
+            }
+
+            remainingQuery = query.substring(foundBook.name.length).trim();
+            const parts = remainingQuery.replace(':', ' ').split(' ').filter(p => p);
+
+            if (parts.length < 1) {
+                alert('Неправильний формат. Введіть розділ після назви книги. Наприклад: Бут 1');
+                return;
+            }
+
+            const chapter = parseInt(parts[0], 10);
+            const versesStr = parts.length > 1 ? parts[1] : '1';
+
+            if (isNaN(chapter)) {
+                alert(`Неправильний номер розділу: "${parts[0]}"`);
+                return;
+            }
+
+            selectedBook = foundBook.book;
+            // Переходимо до екрану віршів. Ця функція також встановить `selectedChapter`.
+            await handleChapterClick(chapter);
+            // Показуємо вірш на проекторі
+            await showVerseOnProjector(versesStr);
+            // Ховаємо оверлей
+            hideSearchOverlay();
+        }
+
+        async function showVerseOnProjector(versesStr) {
+            try {
+                const result = await window.electronAPI.getVerseText({
+                    bookId: selectedBook.id, chapter: selectedChapter, versesStr: versesStr
+                });
+                window.electronAPI.showVerse({ text: result.text, reference: result.reference });
+            } catch (error) {
+                console.error('Помилка отримання тексту вірша:', error);
+                alert('Не вдалося отримати текст вірша. Перевірте консоль.');
+            }
+        }
+
+        // --- Обробка теми ---
+        const applyTheme = (isDark) => {
+            if (isDark) {
+                document.body.classList.add('dark-theme');
+            } else {
+                document.body.classList.remove('dark-theme');
+            }
+        };
+
+        // Отримуємо початкову тему при завантаженні
+        window.electronAPI.getTheme().then(applyTheme);
+
+        // Слухаємо оновлення теми
+        window.electronAPI.onThemeUpdated((isDark) => {
+            applyTheme(isDark);
+        });
+    </script>
+</body>
+</html>

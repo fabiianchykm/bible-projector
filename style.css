@@ -1,0 +1,348 @@
+/* --- Змінні для тем --- */
+:root {
+    --bg-color: #f4f4f9;
+    --text-color: #333;
+    --container-bg: #fff;
+    --container-shadow: rgba(0,0,0,0.1);
+    --primary-color: #0056b3;
+    --border-color: #ddd;
+    --input-border-color: #ccc;
+    --button-bg: #007bff;
+    --button-hover-bg: #0056b3;
+    --book-item-bg: #f9f9f9;
+    --book-item-hover-bg: #e9ecef;
+    --book-item-active-bg: #007bff;
+    --book-item-active-border: #0056b3;
+    --input-readonly-bg: #e9ecef;
+}
+
+body.dark-theme {
+    --bg-color: #1e1e1e;
+    --text-color: #e0e0e0;
+    --container-bg: #2d2d2d;
+    --container-shadow: rgba(0,0,0,0.4);
+    --primary-color: #3a96ff;
+    --border-color: #444;
+    --input-border-color: #555;
+    --button-bg: #007bff;
+    --button-hover-bg: #0056b3;
+    --book-item-bg: #3c3c3c;
+    --book-item-hover-bg: #4a4a4a;
+    --book-item-active-bg: #007bff;
+    --book-item-active-border: #0056b3;
+    --input-readonly-bg: #4a4a4a;
+}
+/* ---------------------- */
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 700px;
+    margin: 20px auto;
+    padding: 20px;
+    background: var(--container-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px var(--container-shadow);
+}
+
+h1, h2 {
+    color: var(--primary-color);
+}
+
+button {
+    display: inline-block;
+    padding: 10px 15px;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    background-color: var(--button-bg);
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: var(--button-hover-bg);
+}
+
+#openProjectorBtn {
+    background-color: #28a745;
+}
+#openProjectorBtn:hover {
+    background-color: #218838;
+}
+
+hr {
+    border: 0;
+    height: 1px;
+    background: var(--border-color);
+    margin: 20px 0;
+}
+
+.verse-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.verse-controls p {
+    margin: 0;
+    font-size: 18px;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+}
+
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.translation-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#translationSelect {
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid var(--input-border-color);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+.search-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 15vh;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.search-overlay-content {
+    position: relative;
+    width: 90%;
+    max-width: 600px;
+}
+
+#smartSearchInput {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid var(--input-border-color);
+    border-radius: 5px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    box-sizing: border-box; /* Щоб padding не впливав на ширину */
+}
+
+.suggestions-box {
+    display: none; /* Сховано за замовчуванням */
+    position: absolute;
+    border: 1px solid var(--border-color);
+    border-top: none;
+    z-index: 99;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--container-bg);
+    max-height: 250px;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px var(--container-shadow);
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.suggestion-item {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.selection-container {
+    margin-top: 20px;
+}
+
+.navigation-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.navigation-header h2 {
+    font-size: 1.1rem;
+    margin: 0; /* Прибираємо стандартні відступи заголовка */
+}
+
+#backBtn {
+    padding: 5px 12px;
+    font-size: 14px;
+    flex-shrink: 0; /* Щоб кнопка не стискалась */
+}
+
+.grid-view {
+    display: grid;
+    /* Адаптивна сітка з "кубиками" */
+    /* Сітка з 6 колонок */
+    grid-template-columns: repeat(6, 1fr);
+    gap: 5px;
+}
+
+.grid-item {
+    /* Створюємо "кубик" (квадрат) */
+    aspect-ratio: 1 / 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2px;
+    font-size: 12px;
+    text-align: center;
+    cursor: pointer;
+    border: 1px solid var(--input-border-color);
+    border-radius: 6px;
+    background-color: var(--book-item-bg);
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
+    user-select: none; /* Забороняємо виділення тексту */
+}
+
+.grid-item:hover {
+    background-color: var(--book-item-hover-bg);
+    border-color: var(--primary-color);
+}
+
+.grid-item:active {
+    /* Ефект натискання */
+    transform: scale(0.95);
+    background-color: var(--book-item-active-bg);
+    color: white;
+    border-color: var(--book-item-active-border);
+}
+
+.grid-item.selected {
+    /* Стиль для виділеного (першого в діапазоні) вірша */
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--book-item-active-border);
+}
+
+.verse-text-item.selected {
+    /* Стиль для виділеного (першого в діапазоні) вірша */
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--book-item-active-border);
+}
+
+.verse-text-item.selected .verse-number {
+    color: white;
+}
+
+.verses-list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.verse-text-item {
+    position: relative; /* Для позиціонування хрестика */
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    font-size: 14px;
+}
+
+.verse-text-item:hover {
+    background-color: var(--book-item-hover-bg);
+    border-color: var(--primary-color);
+}
+
+.verse-text-item .verse-number {
+    font-weight: bold;
+    color: var(--primary-color);
+    min-width: 1.5em; /* To align numbers */
+}
+
+.close-verse-btn {
+    display: none; /* Ховаємо за замовчуванням */
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.1);
+    color: var(--text-color);
+    border: none;
+    font-size: 20px;
+    line-height: 22px;
+    text-align: center;
+    padding: 0;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.verse-text-item.selected .close-verse-btn {
+    display: block; /* Показуємо, коли елемент виділено */
+}
+
+.close-verse-btn:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+.suggestion-item:hover,
+.suggestion-item.active {
+    background-color: var(--book-item-hover-bg);
+}
+
+.input-area {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.input-area input {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid var(--input-border-color);
+    border-radius: 5px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.input-area input#selectedBook { flex-basis: 120px; background-color: var(--input-readonly-bg); font-weight: bold; text-align: center; }
+.input-area input#chapterInput { flex-basis: 100px; }
+.input-area input#verseInput { flex-grow: 1; }

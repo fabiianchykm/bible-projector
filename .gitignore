@@ -1,0 +1,23 @@
+# Dependencies
+/node_modules
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+/dist
+/out
+/build
+
+# User data / Translations
+# It's recommended to not commit the translation database files directly.
+# Users should add them to the 'translations' folder as instructed by the app.
+/translations/*.sqlite
+/translations/*.sqlite3
+
+# OS-specific
+.DS_Store
+Thumbs.db

@@ -1,0 +1,21 @@
+{
+  "name": "bible-projector",
+  "version": "1.0.0",
+  "description": "Програма для виводу місць з Біблії на проектор",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "rebuild": "electron-rebuild"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-rebuild": "^3.2.9"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0"
+  },
+  "type": "commonjs"
+}
