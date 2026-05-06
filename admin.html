@@ -15,7 +15,13 @@
             </div>
             <div class="verse-controls">
                 <button id="openProjectorBtn">Відкрити вікно проектора</button>
+                <button id="settingsBtn" title="Налаштування">⚙️</button>
             </div>
+        </div>
+
+        <div id="update-notification" class="update-notification" style="display: none;">
+            <span id="update-message"></span>
+            <button id="restart-app-btn" style="display: none;">Перезапустити</button>
         </div>
 
         <div class="navigation-header">
@@ -46,6 +52,64 @@
         </div>
     </div>
 
+    <!-- Оверлей налаштувань -->
+    <div id="settingsOverlay" class="settings-overlay" style="display: none;">
+        <div class="settings-panel">
+            <h2>Налаштування</h2>
+            <h3>Кольори проектора</h3>
+            <div class="setting-item">
+                <label for="projectorBgColor">Колір фону:</label>
+                <input type="color" id="projectorBgColor" value="#000000">
+            </div>
+            <div class="setting-item">
+                <label>Фонове зображення:</label>
+                <div class="button-group">
+                    <button id="selectBgImageBtn">Обрати</button>
+                    <button id="removeBgImageBtn">Скинути</button>
+                </div>
+            </div>
+            <div id="bgImageName" class="setting-info-text"></div>
+
+            <hr class="settings-divider">
+            <h3>Кольори категорій книг</h3>
+            <div class="setting-item">
+                <label for="color-pentateuch">П'ятикнижжя:</label>
+                <input type="color" id="color-pentateuch">
+            </div>
+            <div class="setting-item">
+                <label for="color-historical">Історичні:</label>
+                <input type="color" id="color-historical">
+            </div>
+            <div class="setting-item">
+                <label for="color-poetic">Поетичні:</label>
+                <input type="color" id="color-poetic">
+            </div>
+            <div class="setting-item">
+                <label for="color-prophetic">Пророчі:</label>
+                <input type="color" id="color-prophetic">
+            </div>
+            <div class="setting-item">
+                <label for="color-gospels">Євангелії:</label>
+                <input type="color" id="color-gospels">
+            </div>
+            <div class="setting-item">
+                <label for="color-acts">Дії Апостолів:</label>
+                <input type="color" id="color-acts">
+            </div>
+            <div class="setting-item">
+                <label for="color-epistles">Послання:</label>
+                <input type="color" id="color-epistles">
+            </div>
+            <div class="setting-item">
+                <label for="color-revelation">Об'явлення:</label>
+                <input type="color" id="color-revelation">
+            </div>
+
+            <!-- Майбутні налаштування можна додавати сюди -->
+            <button id="closeSettingsBtn">Закрити</button>
+        </div>
+    </div>
+
     <script>
         // --- DOM елементи ---
         const translationSelect = document.getElementById('translationSelect');
@@ -57,6 +121,13 @@
         const searchOverlay = document.getElementById('searchOverlay');
         const smartSearchInput = document.getElementById('smartSearchInput');
         const suggestionsBox = document.getElementById('suggestionsBox');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const projectorBgColorInput = document.getElementById('projectorBgColor');
+        const selectBgImageBtn = document.getElementById('selectBgImageBtn');
+        const removeBgImageBtn = document.getElementById('removeBgImageBtn');
+        const bgImageName = document.getElementById('bgImageName');
 
         // --- Стан програми ---
         let selectedBook = null;
@@ -66,8 +137,27 @@
         let activeSuggestionIndex = -1;
         let userTypedQuery = ''; // Зберігаємо те, що ввів користувач
 
+        const categoryColorClasses = {
+            'pentateuch': 'book-category-pentateuch',
+            'historical': 'book-category-historical',
+            'poetic': 'book-category-poetic',
+            'prophetic': 'book-category-prophetic',
+            'gospels': 'book-category-gospels',
+            'acts': 'book-category-acts',
+            'epistles': 'book-category-epistles',
+            'revelation': 'book-category-revelation'
+        };
+
+        const categoryIds = Object.keys(categoryColorClasses);
+
         // --- Ініціалізація ---
-        document.addEventListener('DOMContentLoaded', loadTranslations);
+        document.addEventListener('DOMContentLoaded', () => {
+            // Застосовуємо початкові кольори категорій з налаштувань
+            window.electronAPI.getSettings().then(settings => applyCategoryColors(settings.categoryColors || {}));
+            loadTranslations();
+            setupCategoryColorPickers();
+        });
+
         document.addEventListener('keydown', handleGlobalKeyDown);
         searchOverlay.addEventListener('click', (e) => {
             // Закриваємо оверлей при кліку на фон
@@ -75,6 +165,77 @@
                 hideSearchOverlay();
             }
         });
+        settingsBtn.addEventListener('click', async () => {
+            settingsOverlay.style.display = 'flex';
+            // Завантажуємо поточні налаштування та оновлюємо інтерфейс
+            const currentSettings = await window.electronAPI.getSettings();
+            projectorBgColorInput.value = currentSettings.backgroundColor || '#000000';
+            if (currentSettings.backgroundImage) {
+                bgImageName.textContent = currentSettings.backgroundImage.split(/[\\/]/).pop();
+            } else {
+                bgImageName.textContent = '';
+            }
+
+            // Застосовуємо та встановлюємо кольори категорій
+            const categoryColors = currentSettings.categoryColors || {};
+            applyCategoryColors(categoryColors);
+            categoryIds.forEach(id => {
+                const input = document.getElementById(`color-${id}`);
+                if (input) {
+                    input.value = categoryColors[id];
+                }
+            });
+        });
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'none';
+        });
+        settingsOverlay.addEventListener('click', (e) => {
+            if (e.target === settingsOverlay) {
+                settingsOverlay.style.display = 'none';
+            }
+        });
+        projectorBgColorInput.addEventListener('input', () => {
+            const newColor = projectorBgColorInput.value;
+            window.electronAPI.updateProjectorSettings({ backgroundColor: newColor });
+        });
+
+        selectBgImageBtn.addEventListener('click', async () => {
+            const result = await window.electronAPI.selectBackgroundImage();
+            if (result && result.path) {
+                // Показуємо назву файлу користувачу
+                bgImageName.textContent = result.path.split(/[\\/]/).pop();
+            }
+        });
+
+        removeBgImageBtn.addEventListener('click', () => {
+            // Відправляємо null, щоб скинути зображення
+            window.electronAPI.updateProjectorSettings({ backgroundImage: null });
+            bgImageName.textContent = '';
+        });
+
+        function applyCategoryColors(colors) {
+            const rootStyle = document.documentElement.style;
+            for (const category in colors) {
+                if (Object.prototype.hasOwnProperty.call(colors, category)) {
+                    rootStyle.setProperty(`--book-color-${category}`, colors[category]);
+                }
+            }
+        }
+
+        function setupCategoryColorPickers() {
+            categoryIds.forEach(category => {
+                const input = document.getElementById(`color-${category}`);
+                if (input) {
+                    input.addEventListener('input', () => {
+                        const newColor = input.value;
+                        // Оновлюємо CSS-змінну для миттєвого відгуку
+                        document.documentElement.style.setProperty(`--book-color-${category}`, newColor);
+                        // Надсилаємо налаштування в головний процес для збереження
+                        window.electronAPI.updateProjectorSettings({ categoryColors: { [category]: newColor } });
+                    });
+                }
+            });
+        }
 
         // --- Завантаження даних ---
         async function loadTranslations() {
@@ -87,10 +248,19 @@
                     option.textContent = name.replace(/\.sqlite(3)?$/i, '');
                     translationSelect.appendChild(option);
                 });
-                await showBooks();
+
+                // Якщо є переклади, спробуємо завантажити книги
+                if (translations.length > 0) {
+                    await showBooks();
+                } else {
+                    booksContainer.innerHTML = `<p class="error-message">Не знайдено жодного перекладу. Будь ласка, додайте файли перекладів (.sqlite3 або .sqlite) у відповідну папку.</p>`;
+                    updateView('books'); // Щоб відобразити повідомлення
+                }
             } catch (error) {
                 console.error('Не вдалося завантажити переклади:', error);
                 alert('Помилка завантаження списку перекладів.');
+                booksContainer.innerHTML = `<p class="error-message">Помилка завантаження списку перекладів: ${error.message}</p>`;
+                updateView('books');
             }
         }
 
@@ -106,10 +276,20 @@
                     const button = document.createElement('div');
                     button.className = 'grid-item';
                     button.textContent = book.short_name;
+
+                    // Використовуємо категорію, яку нам повернув бекенд (main.js)
+                    if (book.category && categoryColorClasses[book.category]) {
+                        button.classList.add(categoryColorClasses[book.category]);
+                    }
                     button.onclick = () => handleBookClick(book);
                     booksContainer.appendChild(button);
                 });
-                updateView('books');
+                if (books.length > 0) {
+                    updateView('books');
+                } else {
+                    booksContainer.innerHTML = `<p class="error-message">Не знайдено книг для обраного перекладу. Перевірте структуру бази даних.</p>`;
+                    updateView('books');
+                }
             } catch (error) {
                 console.error('Не вдалося завантажити книги з БД:', error);
                 booksContainer.innerHTML = `<p class="error-message">Помилка завантаження книг. Перевірте, чи обрано переклад.</p>`;
@@ -525,6 +705,27 @@
         window.electronAPI.onThemeUpdated((isDark) => {
             applyTheme(isDark);
         });
+
+        // --- Обробка оновлень ---
+        const updateNotification = document.getElementById('update-notification');
+        const updateMessage = document.getElementById('update-message');
+        const restartAppBtn = document.getElementById('restart-app-btn');
+
+        window.electronAPI.onUpdateAvailable(() => {
+            updateMessage.textContent = 'Знайдено оновлення! Завантажується...';
+            updateNotification.style.display = 'block';
+        });
+
+        window.electronAPI.onUpdateDownloaded(() => {
+            updateMessage.textContent = 'Оновлення завантажено. Перезапустіть програму, щоб встановити.';
+            restartAppBtn.style.display = 'inline-block';
+            updateNotification.style.display = 'block';
+        });
+
+        restartAppBtn.addEventListener('click', () => {
+            window.electronAPI.restartAppToUpdate();
+        });
+
     </script>
 </body>
 </html>

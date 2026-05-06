@@ -29,6 +29,28 @@
                 verseContainer.style.display = 'none';
             }
         });
+
+        // Слухаємо оновлення налаштувань
+        window.electronAPI.onSettingsUpdated((settings) => {
+            // Оновлення кольору фону
+            if (settings.hasOwnProperty('backgroundColor')) {
+                document.body.style.backgroundColor = settings.backgroundColor;
+            }
+
+            // Оновлення фонового зображення
+            if (settings.hasOwnProperty('backgroundImage')) {
+                if (settings.backgroundImage) {
+                    // Потрібно правильно екранувати шлях для CSS
+                    const imageUrl = settings.backgroundImage.replace(/\\/g, '/');
+                    document.body.style.backgroundImage = `url('${imageUrl}')`;
+                    document.body.style.backgroundSize = 'cover';
+                    document.body.style.backgroundPosition = 'center';
+                    document.body.style.backgroundRepeat = 'no-repeat';
+                } else {
+                    document.body.style.backgroundImage = 'none';
+                }
+            }
+        });
     </script>
 </body>
 </html>

@@ -12,12 +12,6 @@ yarn-error.log*
 /out
 /build
 
-# User data / Translations
-# It's recommended to not commit the translation database files directly.
-# Users should add them to the 'translations' folder as instructed by the app.
-/translations/*.sqlite
-/translations/*.sqlite3
-
 # OS-specific
 .DS_Store
 Thumbs.db

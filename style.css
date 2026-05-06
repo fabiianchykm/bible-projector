@@ -13,6 +13,15 @@
     --book-item-hover-bg: #e9ecef;
     --book-item-active-bg: #007bff;
     --book-item-active-border: #0056b3;
+    --book-category-text-color: #333;
+    --book-color-pentateuch: #FFDDC1;
+    --book-color-historical: #CCE5FF;
+    --book-color-poetic: #D4EDDA;
+    --book-color-prophetic: #FFF3CD;
+    --book-color-gospels: #F8D7DA;
+    --book-color-acts: #E2E3E5;
+    --book-color-epistles: #D6D8EC;
+    --book-color-revelation: #F0E68C;
     --input-readonly-bg: #e9ecef;
 }
 
@@ -30,6 +39,7 @@ body.dark-theme {
     --book-item-hover-bg: #4a4a4a;
     --book-item-active-bg: #007bff;
     --book-item-active-border: #0056b3;
+    --book-category-text-color: #333;
     --input-readonly-bg: #4a4a4a;
 }
 /* ---------------------- */
@@ -75,6 +85,17 @@ button:hover {
 }
 #openProjectorBtn:hover {
     background-color: #218838;
+}
+
+#settingsBtn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    font-size: 20px;
+    padding: 5px 10px;
+    line-height: 1;
+    margin-left: 10px;
+    cursor: pointer;
 }
 
 hr {
@@ -126,6 +147,81 @@ hr {
     font-size: 14px;
 }
 
+/* --- Стилі для категорій книг --- */
+.grid-item.book-category-pentateuch { background-color: var(--book-color-pentateuch); color: var(--book-category-text-color); }
+.grid-item.book-category-historical { background-color: var(--book-color-historical); color: var(--book-category-text-color); }
+.grid-item.book-category-poetic { background-color: var(--book-color-poetic); color: var(--book-category-text-color); }
+.grid-item.book-category-prophetic { background-color: var(--book-color-prophetic); color: var(--book-category-text-color); }
+.grid-item.book-category-gospels { background-color: var(--book-color-gospels); color: var(--book-category-text-color); }
+.grid-item.book-category-acts { background-color: var(--book-color-acts); color: var(--book-category-text-color); }
+.grid-item.book-category-epistles { background-color: var(--book-color-epistles); color: var(--book-category-text-color); }
+.grid-item.book-category-revelation { background-color: var(--book-color-revelation); color: var(--book-category-text-color); }
+
+/* Змінюємо колір тексту на білий для виділених елементів, щоб було видно на темному фоні */
+.grid-item.selected.book-category-pentateuch,
+.grid-item.selected.book-category-historical,
+.grid-item.selected.book-category-poetic,
+.grid-item.selected.book-category-prophetic,
+.grid-item.selected.book-category-gospels,
+.grid-item.selected.book-category-acts,
+.grid-item.selected.book-category-epistles,
+.grid-item.selected.book-category-revelation {
+    color: white;
+}
+
+/* --- Стилі для легенди категорій --- */
+.category-legend {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--container-bg);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.category-legend h3 {
+    grid-column: 1 / -1; /* Розтягнути на всі колонки */
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+    font-size: 1rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.legend-color {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    margin-right: 8px;
+    border: 1px solid rgba(0,0,0,0.1); /* Легка рамка для світлих кольорів */
+}
+
+.update-notification {
+    background-color: #28a745;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.update-notification button {
+    background-color: #fff;
+    color: #28a745;
+    font-weight: bold;
+}
+
 .search-overlay {
     position: fixed;
     top: 0;
@@ -156,6 +252,83 @@ hr {
     background-color: var(--bg-color);
     color: var(--text-color);
     box-sizing: border-box; /* Щоб padding не впливав на ширину */
+}
+
+.settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1001; /* Вище ніж пошук */
+    backdrop-filter: blur(5px);
+}
+
+.settings-panel {
+    background: var(--container-bg);
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px var(--container-shadow);
+    width: 90%;
+    max-width: 400px;
+}
+
+.settings-panel h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.settings-panel h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.settings-divider {
+    border: 0;
+    height: 1px;
+    background: var(--border-color);
+    margin: 25px 0;
+}
+.setting-item label {
+    font-size: 16px;
+}
+
+.setting-item input[type="color"] {
+    -webkit-appearance: none;
+    width: 100px;
+    height: 40px;
+    border: none;
+    padding: 0;
+    background-color: transparent;
+}
+
+.setting-info-text {
+    font-size: 12px;
+    color: #888;
+    text-align: right;
+    margin-top: -15px;
+    margin-bottom: 15px;
+    word-break: break-all;
+}
+
+.settings-panel .button-group button {
+    padding: 5px 10px;
+    font-size: 14px;
 }
 
 .suggestions-box {

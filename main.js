@@ -1,24 +1,120 @@
 const { app, BrowserWindow, ipcMain, screen, nativeTheme, dialog, shell } = require('electron');
 const path = require('path');
+const url = require('url');
 const Database = require('better-sqlite3');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
 
 let adminWindow;
 let projectorWindow;
 let db;
+
+// Шлях до файлу налаштувань у папці даних користувача
+const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+
+let projectorSettings = {
+  backgroundColor: 'black', // Колір фону за замовчуванням
+  backgroundImage: null, // Шлях до зображення
+  categoryColors: {
+    pentateuch: '#FFDDC1',
+    historical: '#CCE5FF',
+    poetic: '#D4EDDA',
+    prophetic: '#FFF3CD',
+    gospels: '#F8D7DA',
+    acts: '#E2E3E5',
+    epistles: '#D6D8EC',
+    revelation: '#F0E68C'
+  }
+};
+
 let currentDbName = '';
 
-// Шлях до папки з перекладами в директорії даних користувача
-// Для зручності розробки можна тимчасово вказати шлях до папки з перекладами
-// всередині проєкту. Для фінальної збірки програми краще повернути рядок нижче.
-// const translationsPath = path.join(app.getPath('userData'), 'translations');
-const translationsPath = path.join(__dirname, 'translations');
+// --- Шляхи до перекладів ---
+const userTranslationsPath = path.join(app.getPath('userData'), 'translations');
+const bundledTranslationsPath = app.isPackaged
+  ? path.join(process.resourcesPath, 'translations')
+  : path.join(__dirname, 'translations');
+
+// --- Налаштування логування для auto-updater ---
+log.transports.file.level = 'info';
+autoUpdater.logger = log;
+log.info('App starting...');
+
+// --- Управління налаштуваннями ---
+
+function saveSettings() {
+  try {
+    fs.writeFileSync(settingsPath, JSON.stringify(projectorSettings, null, 2));
+    console.log('[main] Налаштування збережено.');
+  } catch (e) {
+    console.error('[main] Не вдалося зберегти налаштування:', e);
+  }
+}
+
+function loadSettings() {
+  try {
+    if (fs.existsSync(settingsPath)) {
+      const saved = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      // Глибоке об'єднання для categoryColors, щоб нові категорії з коду не зникали
+      if (saved.categoryColors) {
+        saved.categoryColors = { ...projectorSettings.categoryColors, ...saved.categoryColors };
+      }
+      projectorSettings = { ...projectorSettings, ...saved };
+      console.log('[main] Налаштування завантажено.');
+    }
+  } catch (e) {
+    console.error('[main] Не вдалося завантажити налаштування:', e);
+  }
+}
+
+// --- Управління перекладами ---
+
+// Отримує список всіх доступних перекладів (з bundled та user папок)
+function getAllTranslations() {
+  const translationFiles = new Set();
+
+  // 1. Читаємо переклади користувача
+  try {
+    if (fs.existsSync(userTranslationsPath)) {
+      fs.readdirSync(userTranslationsPath)
+        .filter(file => file.toLowerCase().endsWith('.sqlite3') || file.toLowerCase().endsWith('.sqlite'))
+        .forEach(file => translationFiles.add(file));
+    }
+  } catch (e) {
+    console.error(`Не вдалося прочитати папку користувача з перекладами (${userTranslationsPath}):`, e.message);
+  }
+
+  // 2. Читаємо вбудовані переклади
+  try {
+    if (fs.existsSync(bundledTranslationsPath)) {
+      fs.readdirSync(bundledTranslationsPath)
+        .filter(file => file.toLowerCase().endsWith('.sqlite3') || file.toLowerCase().endsWith('.sqlite'))
+        .forEach(file => translationFiles.add(file)); // Set автоматично обробляє дублікати
+    }
+  } catch (e) {
+    console.error(`Не вдалося прочитати вбудовану папку з перекладами (${bundledTranslationsPath}):`, e.message);
+  }
+
+  return Array.from(translationFiles);
+}
+
+// Знаходить повний шлях до файлу перекладу, надаючи пріоритет файлам користувача
+function getTranslationDbPath(dbName) {
+  const userPath = path.join(userTranslationsPath, dbName);
+  if (fs.existsSync(userPath)) return userPath;
+
+  const bundledPath = path.join(bundledTranslationsPath, dbName);
+  if (fs.existsSync(bundledPath)) return bundledPath;
+
+  return null; // Не знайдено
+}
 
 // Переконуємось, що директорія існує
 try {
-  if (!fs.existsSync(translationsPath)) {
-    fs.mkdirSync(translationsPath, { recursive: true });
-    console.log(`Створено директорію для перекладів: ${translationsPath}`);
+  if (!fs.existsSync(userTranslationsPath)) {
+    fs.mkdirSync(userTranslationsPath, { recursive: true });
+    console.log(`Створено директорію для перекладів користувача: ${userTranslationsPath}`);
   }
 } catch (e) {
   console.error('Не вдалося створити директорію для перекладів:', e);
@@ -70,12 +166,27 @@ function createProjectorWindow() {
 
   console.log('[main] Об\'єкт projectorWindow створено.');
 
-  projectorWindow.loadFile('projector.html').catch(err => {
+  projectorWindow.loadFile('projector.html')
+    .then(() => {
+      // Створюємо об'єкт налаштувань для відправки, конвертуючи шлях у URL
+      const settingsForRenderer = { ...projectorSettings };
+      if (settingsForRenderer.backgroundImage) {
+        settingsForRenderer.backgroundImage = url.format({
+          pathname: settingsForRenderer.backgroundImage,
+          protocol: 'file:',
+          slashes: true
+        });
+      }
+      // Після завантаження вікна, надсилаємо початкові налаштування
+      if (projectorWindow && !projectorWindow.isDestroyed()) {
+        projectorWindow.webContents.send('settings-updated', settingsForRenderer);
+      }
+    })
+    .catch(err => {
       console.error('[main] Не вдалося завантажити projector.html:', err);
-  });
+    });
 
   // projectorWindow.webContents.openDevTools(); // Тимчасово для налагодження
-  
   // Розгортаємо вікно на весь екран і ховаємо меню
   if (externalDisplay) {
     projectorWindow.maximize();
@@ -91,40 +202,36 @@ function createProjectorWindow() {
 
 // Запускаємо створення вікна, коли програма готова
 app.whenReady().then(() => {
-  let translations = [];
-  try {
-    const allFiles = fs.readdirSync(translationsPath);
-    console.log(`[DEBUG] Знайдено файлів у директорії ${translationsPath}:`, allFiles);
+  // Завантажуємо збережені налаштування на старті
+  loadSettings();
 
-    // Знаходимо всі доступні переклади (файли .sqlite3 або .sqlite) у спеціальній папці
-    translations = allFiles.filter(
-      file => file.toLowerCase().endsWith('.sqlite3') || file.toLowerCase().endsWith('.sqlite')
-    );
-  } catch (e) {
-    console.error(`Не вдалося прочитати директорію з перекладами (${translationsPath}):`, e.message);
-  }
+  const translations = getAllTranslations();
 
   if (translations.length > 0) {
     // Підключаємось до першого знайденого перекладу за замовчуванням
     currentDbName = translations[0];
-    try {
-      const dbPath = path.join(translationsPath, currentDbName);
-      db = new Database(dbPath, { readonly: true, fileMustExist: true });
-      console.log(`Успішно підключено до бази даних за замовчуванням: ${currentDbName}`);
-    } catch (err) {
-      console.error(`Не вдалося підключитися до бази даних ${currentDbName}:`, err.message);
+    const dbPath = getTranslationDbPath(currentDbName);
+    if (dbPath) {
+      try {
+        db = new Database(dbPath, { readonly: true, fileMustExist: true });
+        console.log(`Успішно підключено до бази даних за замовчуванням: ${currentDbName}`);
+      } catch (err) {
+        console.error(`Не вдалося підключитися до бази даних ${currentDbName}:`, err.message);
+      }
+    } else {
+      console.error(`Файл для перекладу за замовчуванням ${currentDbName} не знайдено.`);
     }
   } else {
-    console.error(`Не знайдено файлів баз даних (.sqlite3, .sqlite) у директорії: ${translationsPath}`);
+    console.warn(`Не знайдено файлів баз даних (.sqlite3, .sqlite).`);
     dialog.showMessageBox({
       type: 'info',
       title: 'Необхідно додати переклади',
-      message: 'Папка для файлів перекладів порожня.',
-      detail: `Будь ласка, помістіть файли баз даних (.sqlite3 або .sqlite) у цю папку:\n\n${translationsPath}`,
+      message: 'Не знайдено файлів перекладів.',
+      detail: `Програма може включати стандартні переклади. Ви також можете додати власні, помістивши файли (.sqlite3 або .sqlite) у цю папку:\n\n${userTranslationsPath}`,
       buttons: ['Відкрити папку', 'OK']
     }).then(result => {
       if (result.response === 0) { // 'Відкрити папку' button
-        shell.openPath(translationsPath);
+        shell.openPath(userTranslationsPath);
       }
     });
   }
@@ -135,6 +242,9 @@ app.whenReady().then(() => {
   }
 
   createAdminWindow();
+
+  // Перевірка оновлень після створення головного вікна
+  autoUpdater.checkForUpdatesAndNotify();
 
   app.on('activate', () => {
     // На macOS зазвичай повторно створюють вікно, коли клікають на іконку в доці
@@ -173,6 +283,86 @@ ipcMain.on('open-projector', () => {
   }
 });
 
+// Команда на вибір фонового зображення
+ipcMain.handle('select-background-image', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(adminWindow, {
+    title: 'Оберіть фонове зображення',
+    properties: ['openFile'],
+    filters: [
+      { name: 'Зображення', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }
+    ]
+  });
+
+  if (canceled || filePaths.length === 0) {
+    return { path: null };
+  }
+
+  const imagePath = filePaths[0];
+
+  // Оновлюємо налаштування і відправляємо у вікно проектора
+  projectorSettings.backgroundImage = imagePath;
+  saveSettings(); // Зберігаємо налаштування
+
+  // Конвертуємо шлях у URL для відправки у вікно
+  const imageUrl = url.format({ pathname: imagePath, protocol: 'file:', slashes: true });
+  if (projectorWindow && !projectorWindow.isDestroyed()) {
+    projectorWindow.webContents.send('settings-updated', { backgroundImage: imageUrl });
+  }
+
+  return { path: imagePath }; // Повертаємо шлях для відображення в адмін-панелі
+});
+
+// --- Обробка подій auto-updater ---
+autoUpdater.on('update-available', () => {
+  log.info('Update available.');
+  if (adminWindow) adminWindow.webContents.send('update-available');
+});
+
+autoUpdater.on('update-downloaded', () => {
+  log.info('Update downloaded.');
+  if (adminWindow) adminWindow.webContents.send('update-downloaded');
+});
+
+ipcMain.on('restart-app-to-update', () => {
+  autoUpdater.quitAndInstall();
+});
+
+// Команда на оновлення налаштувань
+ipcMain.on('update-projector-settings', (event, settings) => {
+  console.log('[main] Отримано оновлення налаштувань:', settings);
+
+  // Обробка вкладених налаштувань, як-от кольори категорій
+  if (settings.categoryColors) {
+    projectorSettings.categoryColors = {
+      ...projectorSettings.categoryColors,
+      ...settings.categoryColors
+    };
+    delete settings.categoryColors;
+  }
+  projectorSettings = { ...projectorSettings, ...settings };
+
+  saveSettings(); // Зберігаємо налаштування
+
+  // Готуємо дані для відправки (конвертуємо шлях зображення в URL, якщо він є)
+  const settingsForRenderer = { ...settings };
+  if (settingsForRenderer.hasOwnProperty('backgroundImage') && settingsForRenderer.backgroundImage) {
+    settingsForRenderer.backgroundImage = url.format({
+      pathname: settingsForRenderer.backgroundImage,
+      protocol: 'file:',
+      slashes: true
+    });
+  }
+
+  if (projectorWindow && !projectorWindow.isDestroyed()) {
+    projectorWindow.webContents.send('settings-updated', settingsForRenderer);
+  }
+});
+
+// Команда на отримання поточних налаштувань
+ipcMain.handle('get-settings', () => {
+  return { ...projectorSettings }; // Повертаємо копію, щоб уникнути випадкових змін
+});
+
 // Команда на показ вірша
 ipcMain.on('show-verse', (event, verseData) => {
   if (projectorWindow) {
@@ -187,11 +377,9 @@ ipcMain.on('show-verse', (event, verseData) => {
 // Команда на отримання списку доступних перекладів
 ipcMain.handle('get-translations', () => {
   try {
-    return fs.readdirSync(translationsPath).filter(
-      file => file.toLowerCase().endsWith('.sqlite3') || file.toLowerCase().endsWith('.sqlite')
-    );
+    return getAllTranslations();
   } catch (err) {
-    console.error(`Помилка читання директорії для пошуку перекладів (${translationsPath}):`, err);
+    console.error('Помилка під час отримання списку перекладів:', err);
     return [];
   }
 });
@@ -202,13 +390,17 @@ ipcMain.handle('switch-translation', (event, dbName) => {
     return { success: true, message: `Переклад ${dbName} вже активний.` };
   }
 
+  const dbPath = getTranslationDbPath(dbName);
+  if (!dbPath) {
+    return { success: false, message: `Файл перекладу ${dbName} не знайдено.` };
+  }
+
   try {
     if (db && db.open) {
       db.close();
       console.log(`З'єднання з ${currentDbName} закрито.`);
     }
 
-    const dbPath = path.join(translationsPath, dbName);
     db = new Database(dbPath, { readonly: true, fileMustExist: true });
     currentDbName = dbName;
     console.log(`Успішно переключено на базу даних ${dbName}`);
@@ -224,15 +416,67 @@ ipcMain.handle('switch-translation', (event, dbName) => {
 // Команда на отримання списку книг з БД
 ipcMain.handle('get-books', async () => {
   if (!db) {
-    // Краще кидати помилку, щоб фронтенд міг її обробити
-    throw new Error('Немає з\'єднання з базою даних. Будь ласка, виберіть переклад.');
+    console.warn('Спроба отримати книги без підключеної бази даних.');
+    return []; // Повертаємо порожній масив, якщо немає підключення до БД
   }
   try {
     // Припустимо, у вас є таблиця 'books' з колонками 'id', 'short_name', 'long_name'
     // Використовуємо 'book_number' як ідентифікатор і даємо йому псевдонім 'id' для сумісності з фронтендом
     const stmt = db.prepare('SELECT book_number as id, short_name, long_name FROM books ORDER BY book_number');
     const books = stmt.all();
-    return books;
+    
+    // Знаходимо індекс Євангелія від Матвія. 
+    // Це найнадійніший спосіб визначити структуру Біблії (Синодальна чи Протестантська),
+    // не покладаючись на внутрішні ID, які часто відрізняються в різних перекладах.
+    const matthewIndex = books.findIndex(b => 
+      /^(мт|мат|мф|mat|matt)/i.test(b.short_name) || 
+      /матв|матф|matthew/i.test(b.long_name)
+    );
+
+    // Додаємо категорію до кожної книги
+    const booksWithCategory = books.map((book, index) => {
+      let category = '';
+      
+      // 1. Новий Заповіт (структура ідентична у всіх стандартних канонах)
+      if (matthewIndex !== -1 && index >= matthewIndex) {
+        const ntIndex = index - matthewIndex;
+        if (ntIndex >= 0 && ntIndex <= 3) category = 'gospels'; // Матвія - Івана
+        else if (ntIndex === 4) category = 'acts'; // Дії
+        else if (ntIndex >= 5 && ntIndex <= 25) category = 'epistles'; // Послання
+        else if (ntIndex === 26) category = 'revelation'; // Об'явлення
+      } 
+      // 2. Старий Заповіт - Протестантський канон (39 книг)
+      else if (matthewIndex === 39) {
+        if (index >= 0 && index <= 4) category = 'pentateuch';
+        else if (index >= 5 && index <= 16) category = 'historical';
+        else if (index >= 17 && index <= 21) category = 'poetic';
+        else if (index >= 22 && index <= 38) category = 'prophetic';
+      }
+      // 3. Старий Заповіт - Синодальний канон (50 книг)
+      else if (matthewIndex === 50) {
+        if (index >= 0 && index <= 4) category = 'pentateuch';
+        else if (index >= 5 && index <= 19) category = 'historical';
+        else if (index >= 20 && index <= 26) category = 'poetic';
+        else if (index >= 27 && index <= 45) category = 'prophetic';
+        else if (index >= 46 && index <= 49) category = 'historical';
+      }
+      // 4. Універсальний Fallback по назві книги (для дуже нестандартних модулів Біблії)
+      else {
+        const short = book.short_name.toLowerCase();
+        if (/^(бут|быт|вих|исх|лев|чис|повт|втор|gen|exo|lev|num|deut)/.test(short)) category = 'pentateuch';
+        else if (/^(нав|суд|рут|руф|цар|сам|хр|пар|езд|езр|неем|ест|есф|тов|юдиф|мак|josh|judg|ruth|sam|ki|chr|ezr|neh|est|tob|mac)/.test(short)) category = 'historical';
+        else if (/^(йов|иов|пс|прит|ек|пісн|пес|мудр|сир|job|psa|pro|ecc|song|wis|sir)/.test(short)) category = 'poetic';
+        else if (/^(іс|ис|єр|иер|плач|вар|єз|иез|езе|дан|ос|йоїл|иоил|ам|овд|авд|йон|ион|мих|наум|авак|авв|соф|ог|агг|зах|мал|isa|jer|lam|bar|eze|dan|hos|joe|amo|oba|jon|mic|nah|hab|zep|hag|zec|mal)/.test(short)) category = 'prophetic';
+        else if (/^(мт|мат|мф|мк|мар|лк|лук|ів|ин|иоан|mat|mar|luk|joh)/.test(short)) category = 'gospels';
+        else if (/^(дії|деян|act)/.test(short)) category = 'acts';
+        else if (/^(рим|кор|гал|еф|філ|фил|кол|сол|фес|тим|тит|флм|євр|евр|як|иак|пет|юд|иуд|rom|cor|gal|eph|php|col|th|tim|tit|phm|heb|jam|pet|jud)/.test(short)) category = 'epistles';
+        else if (/^(об|отк|rev|apoc)/.test(short)) category = 'revelation';
+      }
+
+      return { ...book, category };
+    });
+
+    return booksWithCategory;
   } catch (err) {
     console.error('Помилка при зчитуванні книг з БД:', err);
     throw err; // Перекидаємо помилку далі, щоб фронтенд її отримав

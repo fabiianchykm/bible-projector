@@ -14,4 +14,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVerses: (params) => ipcRenderer.invoke('get-verses', params),
   getChapterText: (params) => ipcRenderer.invoke('get-chapter-text', params),
   getVerseText: (params) => ipcRenderer.invoke('get-verse-text', params),
+  // API для налаштувань
+  updateProjectorSettings: (settings) => ipcRenderer.send('update-projector-settings', settings),
+  onSettingsUpdated: (callback) => ipcRenderer.on('settings-updated', (event, ...args) => callback(...args)),
+  selectBackgroundImage: () => ipcRenderer.invoke('select-background-image'),
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  // API для оновлень
+  onUpdateAvailable: (callback) => ipcRenderer.on('update-available', callback),
+  onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback),
+  restartAppToUpdate: () => ipcRenderer.send('restart-app-to-update'),
 });
