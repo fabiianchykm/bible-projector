@@ -29,6 +29,18 @@
                 </div>
             </div>
             <div class="top-bar-actions">
+                <div class="saved-places-wrap">
+                    <button id="savedPlacesBtn" data-i18n-title="savedPlacesTitle" title="Збережені місця">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                        </svg>
+                    </button>
+                    <div id="savedPlacesPanel" class="modules-panel saved-places-panel" style="display: none;">
+                        <div class="modules-group-label" id="savedPlacesLabel" data-i18n="savedPlacesLabel">Збережені місця</div>
+                        <div id="savedPlacesList"></div>
+                        <button id="addCurrentPlaceBtn" class="btn-sm saved-add-btn" data-i18n="addCurrentPlace">+ Додати показане місце</button>
+                    </div>
+                </div>
                 <button id="openProjectorBtn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="2" y="3" width="20" height="14" rx="2"/>
@@ -259,6 +271,12 @@
                 nowShowing: 'зараз показується',
                 downloadModuleError: 'Не вдалося завантажити модуль: {msg}',
                 langNames: { ukr: 'Українська', rus: 'Російська', eng: 'Англійська' },
+                savedPlacesTitle: 'Збережені місця',
+                savedPlacesLabel: 'Збережені місця',
+                addCurrentPlace: '+ Додати показане місце',
+                noSavedPlaces: 'Поки нічого не збережено. Покажіть вірш на проекторі та натисніть «Додати».',
+                nothingShown: 'Спочатку покажіть вірш на проекторі.',
+                deletePlace: 'Видалити',
                 chooseBook: 'Оберіть книгу',
                 chooseChapter: 'Оберіть розділ',
                 chooseVerse: 'Оберіть вірш',
@@ -319,6 +337,12 @@
                 nowShowing: 'now showing',
                 downloadModuleError: 'Failed to download module: {msg}',
                 langNames: { ukr: 'Ukrainian', rus: 'Russian', eng: 'English' },
+                savedPlacesTitle: 'Saved places',
+                savedPlacesLabel: 'Saved places',
+                addCurrentPlace: '+ Add shown place',
+                noSavedPlaces: 'Nothing saved yet. Show a verse on the projector and press "Add".',
+                nothingShown: 'Show a verse on the projector first.',
+                deletePlace: 'Delete',
                 chooseBook: 'Choose a book',
                 chooseChapter: 'Choose a chapter',
                 chooseVerse: 'Choose a verse',
@@ -421,6 +445,7 @@
             // Стан паралельного перекладу (читаємо до заповнення списків перекладів)
             parallelMode = settings.parallelMode === true;
             secondaryTranslation = settings.secondaryTranslation || null;
+            savedPlaces = Array.isArray(settings.savedPlaces) ? settings.savedPlaces : [];
 
             await loadTranslations();
             setupCategoryColorPickers();
@@ -797,6 +822,120 @@
             if (primary) translationSelect.value = primary;
             if (secondary) secondaryTranslationSelect.value = secondary;
             updateTranslationPickerLabel();
+        }
+
+        // --- Збережені місця (плейлист для служіння) ---
+        const savedPlacesBtn = document.getElementById('savedPlacesBtn');
+        const savedPlacesPanel = document.getElementById('savedPlacesPanel');
+        const savedPlacesList = document.getElementById('savedPlacesList');
+        const addCurrentPlaceBtn = document.getElementById('addCurrentPlaceBtn');
+        let savedPlaces = [];              // [{bookId, chapter, versesStr, label}]
+        let lastOpenedPlaceIndex = -1;     // Останнє відкрите місце (для підсвічування)
+
+        function isSavedPlacesOpen() {
+            return savedPlacesPanel.style.display !== 'none';
+        }
+
+        savedPlacesBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (isSavedPlacesOpen()) {
+                savedPlacesPanel.style.display = 'none';
+            } else {
+                closeModulesPanel();
+                savedPlacesPanel.style.display = 'block';
+                renderSavedPlaces();
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (isSavedPlacesOpen() && !savedPlacesPanel.contains(e.target)) {
+                savedPlacesPanel.style.display = 'none';
+            }
+        });
+
+        function persistSavedPlaces() {
+            window.electronAPI.updateProjectorSettings({ savedPlaces });
+        }
+
+        function renderSavedPlaces() {
+            savedPlacesList.innerHTML = '';
+            if (savedPlaces.length === 0) {
+                savedPlacesList.innerHTML = `<div class="modules-status">${t('noSavedPlaces')}</div>`;
+                return;
+            }
+            savedPlaces.forEach((place, index) => {
+                const row = document.createElement('div');
+                row.className = 'module-item module-item--installed saved-place-item';
+                if (index === lastOpenedPlaceIndex) row.classList.add('module-item--current');
+
+                const info = document.createElement('div');
+                info.className = 'module-info';
+                const name = document.createElement('div');
+                name.className = 'module-name';
+                name.textContent = place.label;
+                info.appendChild(name);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'saved-place-del';
+                delBtn.title = t('deletePlace');
+                delBtn.innerHTML = '&times;';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    savedPlaces.splice(index, 1);
+                    if (lastOpenedPlaceIndex === index) lastOpenedPlaceIndex = -1;
+                    else if (lastOpenedPlaceIndex > index) lastOpenedPlaceIndex--;
+                    persistSavedPlaces();
+                    renderSavedPlaces();
+                };
+
+                row.appendChild(info);
+                row.appendChild(delBtn);
+                row.onclick = () => openSavedPlace(place, index);
+                savedPlacesList.appendChild(row);
+            });
+        }
+
+        addCurrentPlaceBtn.addEventListener('click', () => {
+            if (!lastShownVerse || !selectedBook || !selectedChapter) {
+                alert(t('nothingShown'));
+                return;
+            }
+            const item = {
+                bookId: selectedBook.id,
+                chapter: selectedChapter,
+                versesStr: String(lastShownVerse),
+                label: `${selectedBook.short_name} ${selectedChapter}:${lastShownVerse}`
+            };
+            const exists = savedPlaces.some(p =>
+                p.bookId == item.bookId && p.chapter == item.chapter && p.versesStr === item.versesStr);
+            if (!exists) {
+                savedPlaces.push(item);
+                persistSavedPlaces();
+            }
+            renderSavedPlaces();
+        });
+
+        // Відкриває збережене місце: навігація до вірша + показ на проекторі
+        async function openSavedPlace(place, index) {
+            const book = allBooks.find(b => b.id == place.bookId);
+            if (!book) return;
+            selectedBook = book;
+            await handleChapterClick(place.chapter);
+            await showVerseOnProjector(place.versesStr);
+
+            // Виділяємо перший вірш діапазону в списку
+            const firstVerse = String(place.versesStr).split(/[-,]/)[0].trim();
+            const verseEl = versesContainer.querySelector(`[data-verse-num="${firstVerse}"]`);
+            if (verseEl) {
+                document.querySelectorAll('#versesContainer .verse-text-item.selected')
+                    .forEach(el => el.classList.remove('selected'));
+                verseEl.classList.add('selected');
+                verseEl.scrollIntoView({ block: 'center' });
+                firstSelectedVerse = parseInt(firstVerse, 10);
+            }
+
+            lastOpenedPlaceIndex = index;
+            renderSavedPlaces(); // Оновлюємо підсвічування активного місця
         }
 
         function setupCategoryColorPickers() {
@@ -1377,6 +1516,14 @@
                 if (e.key === 'Escape') {
                     e.preventDefault();
                     closeModulesPanel();
+                }
+                return;
+            }
+            // Те саме для панелі збережених місць
+            if (isSavedPlacesOpen()) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    savedPlacesPanel.style.display = 'none';
                 }
                 return;
             }

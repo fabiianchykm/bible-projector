@@ -711,6 +711,72 @@ details[open] > summary.settings-section-label::after {
     padding: 4px;
 }
 
+/* Панель збережених місць */
+.saved-places-wrap {
+    position: relative;
+}
+
+#savedPlacesBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+#savedPlacesBtn:hover {
+    background-color: var(--book-item-hover-bg);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.saved-places-panel {
+    left: auto;
+    right: 0;
+    width: 300px;
+}
+
+.saved-add-btn {
+    width: 100%;
+    margin-top: 6px;
+}
+
+.saved-place-item {
+    justify-content: space-between;
+}
+
+.saved-place-del {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 5px;
+    color: var(--text-color);
+    opacity: 0.45;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    transition: opacity 0.12s, background-color 0.12s;
+}
+
+.saved-place-del:hover {
+    background-color: rgba(220, 53, 69, 0.12);
+    color: #dc3545;
+    opacity: 1;
+}
+
 /* Підзаголовок мови у списку доступних модулів */
 .modules-lang-label {
     font-size: 11px;

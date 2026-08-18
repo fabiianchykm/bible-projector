@@ -24,6 +24,7 @@ let projectorSettings = {
   theme: 'system', // Тема інтерфейсу: 'system' | 'light' | 'dark'
   language: 'uk', // Мова інтерфейсу: 'uk' | 'en'
   projectorFont: 'Century Gothic', // Шрифт тексту на проекторі
+  savedPlaces: [], // Заздалегідь збережені місця для показу одним кліком
   parallelMode: false, // Показувати два переклади одночасно
   secondaryTranslation: null, // Файл другого перекладу для паралельного показу
   categoryColors: {
