@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Bible Projector — Пульт</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #181c24;
+            color: #dde2ee;
+            min-height: 100vh;
+            padding-bottom: 90px;
+        }
+        header {
+            position: sticky; top: 0; z-index: 10;
+            background: #1c2130;
+            padding: 12px 14px;
+            border-bottom: 1px solid #343b4f;
+        }
+        .header-row { display: flex; gap: 8px; align-items: center; }
+        #backBtn {
+            flex-shrink: 0; display: none;
+            padding: 9px 14px; border: none; border-radius: 8px;
+            background: #2d3347; color: #dde2ee; font-size: 15px;
+        }
+        #searchInput {
+            flex: 1; padding: 10px 12px;
+            border: 1px solid #3e4660; border-radius: 8px;
+            background: #242937; color: #dde2ee; font-size: 16px;
+            outline: none;
+        }
+        #crumb { font-size: 13px; color: #8b93a8; margin-top: 8px; min-height: 16px; }
+        main { padding: 12px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; }
+        .grid button {
+            padding: 12px 4px; border: none; border-radius: 8px;
+            background: #2d3347; color: #dde2ee; font-size: 15px; font-weight: 500;
+        }
+        .grid button:active { background: #007bff; }
+        .verse-item {
+            display: flex; gap: 10px; padding: 11px 10px;
+            border-bottom: 1px solid #2a3040; font-size: 15px; line-height: 1.45;
+        }
+        .verse-item.selected { background: rgba(0,123,255,0.18); border-radius: 8px; }
+        .verse-num { color: #4da3ff; font-weight: 700; flex-shrink: 0; min-width: 22px; }
+        .result-ref { color: #4da3ff; font-weight: 600; font-size: 13px; display: block; margin-bottom: 2px; }
+        .status { text-align: center; color: #8b93a8; padding: 30px 10px; font-size: 14px; }
+        #proposeBar {
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+            padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+            background: #1c2130; border-top: 1px solid #343b4f;
+            display: none;
+        }
+        #proposeBtn {
+            width: 100%; padding: 14px; border: none; border-radius: 10px;
+            background: #007bff; color: #fff; font-size: 17px; font-weight: 600;
+        }
+        #proposeBtn:disabled { opacity: 0.6; }
+        #toast {
+            position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%);
+            background: #16a34a; color: #fff; padding: 10px 18px; border-radius: 10px;
+            font-size: 15px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 30;
+            white-space: nowrap;
+        }
+        #toast.visible { opacity: 1; }
+        #toast.error { background: #dc3545; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-row">
+            <button id="backBtn">←</button>
+            <input type="text" id="searchInput" placeholder="Пошук: назва книги або текст вірша">
+        </div>
+        <div id="crumb"></div>
+    </header>
+    <main id="content"><div class="status">Завантаження…</div></main>
+
+    <div id="proposeBar">
+        <button id="proposeBtn"></button>
+    </div>
+    <div id="toast"></div>
+
+    <script>
+        const content = document.getElementById('content');
+        const crumb = document.getElementById('crumb');
+        const backBtn = document.getElementById('backBtn');
+        const searchInput = document.getElementById('searchInput');
+        const proposeBar = document.getElementById('proposeBar');
+        const proposeBtn = document.getElementById('proposeBtn');
+        const toast = document.getElementById('toast');
+
+        let books = [];
+        let view = 'books'; // books | chapters | verses | results
+        let curBook = null;
+        let curChapter = null;
+        let selected = null; // {bookId, chapter, verse, text, shortName}
+        let searchTimer = null;
+        let toastTimer = null;
+
+        function showToast(msg, isError) {
+            toast.textContent = msg;
+            toast.classList.toggle('error', !!isError);
+            toast.classList.add('visible');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('visible'), 2000);
+        }
+
+        async function api(path) {
+            const res = await fetch(path);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        }
+
+        function clearSelection() {
+            selected = null;
+            proposeBar.style.display = 'none';
+            document.querySelectorAll('.verse-item.selected').forEach(el => el.classList.remove('selected'));
+        }
+
+        function selectVerse(el, data) {
+            document.querySelectorAll('.verse-item.selected').forEach(x => x.classList.remove('selected'));
+            if (selected && selected.bookId === data.bookId && selected.chapter === data.chapter && selected.verse === data.verse) {
+                clearSelection();
+                return;
+            }
+            selected = data;
+            el.classList.add('selected');
+            proposeBtn.disabled = false;
+            proposeBtn.textContent = `Запропонувати: ${data.shortName} ${data.chapter}:${data.verse}`;
+            proposeBar.style.display = 'block';
+        }
+
+        async function propose() {
+            if (!selected) return;
+            proposeBtn.disabled = true;
+            try {
+                const res = await fetch('/api/propose', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bookId: selected.bookId,
+                        chapter: selected.chapter,
+                        versesStr: String(selected.verse),
+                        reference: `${selected.shortName} ${selected.chapter}:${selected.verse}`,
+                        text: selected.text
+                    })
+                });
+                if (!res.ok) throw new Error();
+                showToast('Надіслано ✓');
+                clearSelection();
+            } catch (e) {
+                showToast('Не вдалося надіслати', true);
+                proposeBtn.disabled = false;
+            }
+        }
+        proposeBtn.addEventListener('click', propose);
+
+        function showBooks() {
+            view = 'books';
+            curBook = null; curChapter = null;
+            clearSelection();
+            backBtn.style.display = 'none';
+            crumb.textContent = 'Оберіть книгу';
+            const grid = document.createElement('div');
+            grid.className = 'grid';
+            books.forEach(b => {
+                const btn = document.createElement('button');
+                btn.textContent = b.short_name;
+                btn.onclick = () => showChapters(b);
+                grid.appendChild(btn);
+            });
+            content.innerHTML = '';
+            content.appendChild(grid);
+        }
+
+        async function showChapters(book) {
+            view = 'chapters';
+            curBook = book;
+            clearSelection();
+            backBtn.style.display = 'block';
+            crumb.textContent = book.long_name + ' — оберіть розділ';
+            content.innerHTML = '<div class="status">Завантаження…</div>';
+            try {
+                const chapters = await api('/api/chapters?bookId=' + book.id);
+                const grid = document.createElement('div');
+                grid.className = 'grid';
+                chapters.forEach(ch => {
+                    const btn = document.createElement('button');
+                    btn.textContent = ch;
+                    btn.onclick = () => showVerses(book, ch);
+                    grid.appendChild(btn);
+                });
+                content.innerHTML = '';
+                content.appendChild(grid);
+            } catch (e) {
+                content.innerHTML = '<div class="status">Помилка завантаження</div>';
+            }
+        }
+
+        async function showVerses(book, chapter) {
+            view = 'verses';
+            curBook = book; curChapter = chapter;
+            clearSelection();
+            backBtn.style.display = 'block';
+            crumb.textContent = `${book.long_name} ${chapter} — торкніться вірша`;
+            content.innerHTML = '<div class="status">Завантаження…</div>';
+            try {
+                const verses = await api(`/api/chapter-text?bookId=${book.id}&chapter=${chapter}`);
+                content.innerHTML = '';
+                verses.forEach(v => {
+                    const item = document.createElement('div');
+                    item.className = 'verse-item';
+                    item.innerHTML = `<span class="verse-num">${v.verse}</span><span>${escapeHtml(v.text)}</span>`;
+                    item.onclick = () => selectVerse(item, {
+                        bookId: book.id, chapter, verse: v.verse, text: v.text, shortName: book.short_name
+                    });
+                    content.appendChild(item);
+                });
+            } catch (e) {
+                content.innerHTML = '<div class="status">Помилка завантаження</div>';
+            }
+        }
+
+        function escapeHtml(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        async function doSearch(q) {
+            view = 'results';
+            clearSelection();
+            backBtn.style.display = 'block';
+            crumb.textContent = 'Результати пошуку';
+            content.innerHTML = '<div class="status">Пошук…</div>';
+            try {
+                const results = await api('/api/search?q=' + encodeURIComponent(q));
+                if (results.length === 0) {
+                    content.innerHTML = '<div class="status">Нічого не знайдено</div>';
+                    return;
+                }
+                content.innerHTML = '';
+                results.forEach(r => {
+                    const item = document.createElement('div');
+                    item.className = 'verse-item';
+                    item.innerHTML = `<span><span class="result-ref">${escapeHtml(r.shortName)} ${r.chapter}:${r.verse}</span>${escapeHtml(r.text)}</span>`;
+                    item.onclick = () => selectVerse(item, {
+                        bookId: r.bookId, chapter: r.chapter, verse: r.verse, text: r.text, shortName: r.shortName
+                    });
+                    content.appendChild(item);
+                });
+            } catch (e) {
+                content.innerHTML = '<div class="status">Помилка пошуку</div>';
+            }
+        }
+
+        // Пошук: одне слово — фільтр книг, 2+ слова — пошук по тексту
+        searchInput.addEventListener('input', () => {
+            const q = searchInput.value.trim();
+            clearTimeout(searchTimer);
+            if (!q) { showBooks(); return; }
+            if (/\S+\s+\S/.test(q)) {
+                searchTimer = setTimeout(() => doSearch(q), 450);
+                return;
+            }
+            // Фільтр книг за назвою
+            view = 'books';
+            backBtn.style.display = 'block';
+            crumb.textContent = 'Оберіть книгу';
+            const ql = q.toLowerCase();
+            const filtered = books.filter(b =>
+                b.short_name.toLowerCase().startsWith(ql) || b.long_name.toLowerCase().startsWith(ql));
+            const grid = document.createElement('div');
+            grid.className = 'grid';
+            filtered.forEach(b => {
+                const btn = document.createElement('button');
+                btn.textContent = b.short_name;
+                btn.onclick = () => { searchInput.value = ''; showChapters(b); };
+                grid.appendChild(btn);
+            });
+            content.innerHTML = filtered.length ? '' : '<div class="status">Книгу не знайдено</div>';
+            if (filtered.length) content.appendChild(grid);
+        });
+
+        backBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            if (view === 'verses') showChapters(curBook);
+            else showBooks();
+        });
+
+        // Старт
+        (async () => {
+            try {
+                books = await api('/api/books');
+                showBooks();
+            } catch (e) {
+                content.innerHTML = '<div class="status">Немає зв\'язку з програмою.<br>Перевірте, що комп\'ютер увімкнений і ви в одній Wi-Fi мережі.</div>';
+            }
+        })();
+    </script>
+</body>
+</html>

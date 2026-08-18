@@ -25,6 +25,7 @@ let projectorSettings = {
   language: 'uk', // Мова інтерфейсу: 'uk' | 'en'
   projectorFont: 'Century Gothic', // Шрифт тексту на проекторі
   savedPlaces: [], // Заздалегідь збережені місця для показу одним кліком
+  remoteEnabled: false, // Пульт помічника: веб-сторінка у локальній мережі
   parallelMode: false, // Показувати два переклади одночасно
   secondaryTranslation: null, // Файл другого перекладу для паралельного показу
   categoryColors: {
@@ -479,6 +480,9 @@ app.whenReady().then(() => {
   }
 
   createAdminWindow();
+
+  // Стартуємо пульт помічника, якщо був увімкнений
+  if (projectorSettings.remoteEnabled) startRemoteServer();
 
   // Перевірка оновлень після створення головного вікна та далі кожні 4 години
   // (лише у встановленій програмі — у режимі розробки оновлення недоступні)
@@ -999,4 +1003,128 @@ nativeTheme.on('updated', () => {
 // Надаємо початковий стан теми на запит від вікна
 ipcMain.handle('get-theme', () => {
   return nativeTheme.shouldUseDarkColors;
+});
+
+// --- Пульт помічника: веб-сервер у локальній мережі ---
+// Помічник відкриває сторінку на телефоні, шукає місце і пропонує його;
+// оператор на комп'ютері підтверджує показ.
+
+const http = require('http');
+const os = require('os');
+const REMOTE_PORT = 3777;
+let remoteServer = null;
+
+function getLanAddress() {
+  const ifaces = os.networkInterfaces();
+  for (const name of Object.keys(ifaces)) {
+    for (const iface of ifaces[name] || []) {
+      if (iface.family === 'IPv4' && !iface.internal) return iface.address;
+    }
+  }
+  return '127.0.0.1';
+}
+
+function remoteUrl() {
+  return `http://${getLanAddress()}:${REMOTE_PORT}`;
+}
+
+function remoteJson(res, code, data) {
+  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify(data));
+}
+
+function startRemoteServer() {
+  if (remoteServer) return;
+  remoteServer = http.createServer((req, res) => {
+    const u = new URL(req.url, 'http://localhost');
+    try {
+      if (req.method === 'GET' && u.pathname === '/') {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(fs.readFileSync(path.join(__dirname, 'remote.html'), 'utf-8'));
+
+      } else if (u.pathname === '/api/books') {
+        if (!db) return remoteJson(res, 503, { error: 'База даних недоступна' });
+        remoteJson(res, 200, db.prepare('SELECT book_number as id, short_name, long_name FROM books ORDER BY book_number').all());
+
+      } else if (u.pathname === '/api/chapters') {
+        if (!db) return remoteJson(res, 503, { error: 'База даних недоступна' });
+        const bookId = Number(u.searchParams.get('bookId'));
+        const rows = db.prepare('SELECT DISTINCT chapter FROM verses WHERE book_number = ? ORDER BY chapter').all(bookId);
+        remoteJson(res, 200, rows.map(r => r.chapter));
+
+      } else if (u.pathname === '/api/chapter-text') {
+        if (!db) return remoteJson(res, 503, { error: 'База даних недоступна' });
+        const bookId = Number(u.searchParams.get('bookId'));
+        const chapter = Number(u.searchParams.get('chapter'));
+        const rows = db.prepare('SELECT verse, text FROM verses WHERE book_number = ? AND chapter = ? ORDER BY verse').all(bookId, chapter);
+        remoteJson(res, 200, rows.map(r => ({ verse: r.verse, text: cleanVerseText(r.text) })));
+
+      } else if (u.pathname === '/api/search') {
+        if (!db) return remoteJson(res, 503, { error: 'База даних недоступна' });
+        const query = (u.searchParams.get('q') || '').trim();
+        const words = query.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+        if (words.length === 0) return remoteJson(res, 200, []);
+        const conditions = words.map(() => '(v.text LIKE ? OR v.text LIKE ?)').join(' AND ');
+        const params = [];
+        for (const w of words) {
+          params.push(`%${w}%`);
+          params.push(`%${w.charAt(0).toUpperCase() + w.slice(1)}%`);
+        }
+        const rows = db.prepare(`
+          SELECT v.book_number as bookId, v.chapter, v.verse, v.text, b.short_name as shortName
+          FROM verses v JOIN books b ON b.book_number = v.book_number
+          WHERE ${conditions} LIMIT 30
+        `).all(...params);
+        remoteJson(res, 200, rows.map(r => ({ ...r, text: cleanVerseText(r.text) })));
+
+      } else if (req.method === 'POST' && u.pathname === '/api/propose') {
+        let body = '';
+        req.on('data', c => { body += c; if (body.length > 10000) req.destroy(); });
+        req.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            const proposal = {
+              bookId: data.bookId,
+              chapter: Number(data.chapter),
+              versesStr: String(data.versesStr || '').slice(0, 20),
+              reference: String(data.reference || '').slice(0, 80),
+              text: String(data.text || '').slice(0, 300)
+            };
+            if (adminWindow && !adminWindow.isDestroyed()) {
+              adminWindow.webContents.send('remote-proposal', proposal);
+            }
+            remoteJson(res, 200, { ok: true });
+          } catch (e) {
+            remoteJson(res, 400, { error: 'bad request' });
+          }
+        });
+
+      } else {
+        res.writeHead(404);
+        res.end();
+      }
+    } catch (e) {
+      console.error('[remote]', e);
+      try { remoteJson(res, 500, { error: e.message }); } catch (_) {}
+    }
+  });
+  remoteServer.listen(REMOTE_PORT, '0.0.0.0');
+  log.info(`Remote helper server started at ${remoteUrl()}`);
+}
+
+function stopRemoteServer() {
+  if (remoteServer) {
+    remoteServer.close();
+    remoteServer = null;
+    log.info('Remote helper server stopped.');
+  }
+}
+
+ipcMain.handle('get-remote-info', () => ({ enabled: !!remoteServer, url: remoteUrl() }));
+
+ipcMain.handle('set-remote-enabled', (event, enabled) => {
+  projectorSettings.remoteEnabled = !!enabled;
+  saveSettings();
+  if (enabled) startRemoteServer(); else stopRemoteServer();
+  return { enabled: !!remoteServer, url: remoteUrl() };
 });

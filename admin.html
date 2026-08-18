@@ -57,6 +57,22 @@
             </div>
         </div>
 
+        <!-- Картка пропозиції від помічника -->
+        <div id="proposalCard" class="proposal-card" style="display: none;">
+            <div class="proposal-info">
+                <div class="proposal-header">
+                    <span data-i18n="proposalTitle">Пропозиція з телефона</span>
+                    <span id="proposalQueueBadge" class="proposal-queue-badge" style="display: none;"></span>
+                </div>
+                <div id="proposalRef" class="proposal-ref"></div>
+                <div id="proposalText" class="proposal-text"></div>
+            </div>
+            <div class="proposal-actions">
+                <button id="proposalShowBtn" class="proposal-show-btn" data-i18n="proposalShow">Показати</button>
+                <button id="proposalDismissBtn" class="btn-sm btn-sm-ghost" data-i18n="proposalDismiss">Відхилити</button>
+            </div>
+        </div>
+
         <div id="update-notification" class="update-notification" style="display: none;">
             <span id="update-message"></span>
             <button id="restart-app-btn" style="display: none;" data-i18n="restart">Перезапустити</button>
@@ -207,6 +223,24 @@
                     </div>
                 </details>
 
+                <details class="settings-section">
+                    <summary class="settings-section-label"><span data-i18n="sectionRemote">Пульт помічника</span></summary>
+                    <div class="settings-section-body">
+                        <div class="setting-row">
+                            <span data-i18n="remoteToggle">Дозволити пропозиції з телефона</span>
+                            <label class="toggle">
+                                <input type="checkbox" id="remoteToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div id="remoteInfo" class="setting-info-text" style="display: none; text-align: left;">
+                            <span data-i18n="remoteUrlInfo">Відкрийте на телефоні (та сама Wi-Fi мережа):</span>
+                            <strong id="remoteUrlText" class="remote-url"></strong>
+                        </div>
+                        <div class="setting-info-text" style="text-align: left;" data-i18n="remoteHint">Помічник шукає місце на телефоні й пропонує його — ви підтверджуєте показ одним кліком.</div>
+                    </div>
+                </details>
+
                 <details class="settings-section settings-section--last">
                     <summary class="settings-section-label"><span data-i18n="sectionUpdates">Оновлення</span> <span class="settings-label-hint">v<span id="appVersion">—</span></span></summary>
                     <div class="settings-section-body">
@@ -279,6 +313,13 @@
                 deletePlace: 'Видалити',
                 addedToPlaces: 'Додано в закладки: {ref}',
                 alreadyInPlaces: 'Вже в закладках: {ref}',
+                sectionRemote: 'Пульт помічника',
+                remoteToggle: 'Дозволити пропозиції з телефона',
+                remoteUrlInfo: 'Відкрийте на телефоні (та сама Wi-Fi мережа):',
+                remoteHint: 'Помічник шукає місце на телефоні й пропонує його — ви підтверджуєте показ одним кліком.',
+                proposalTitle: 'Пропозиція з телефона',
+                proposalShow: 'Показати',
+                proposalDismiss: 'Відхилити',
                 chooseBook: 'Оберіть книгу',
                 chooseChapter: 'Оберіть розділ',
                 chooseVerse: 'Оберіть вірш',
@@ -347,6 +388,13 @@
                 deletePlace: 'Delete',
                 addedToPlaces: 'Added to bookmarks: {ref}',
                 alreadyInPlaces: 'Already bookmarked: {ref}',
+                sectionRemote: 'Helper remote',
+                remoteToggle: 'Allow proposals from a phone',
+                remoteUrlInfo: 'Open on the phone (same Wi-Fi network):',
+                remoteHint: 'A helper finds a verse on their phone and proposes it — you confirm with one click.',
+                proposalTitle: 'Proposal from phone',
+                proposalShow: 'Show',
+                proposalDismiss: 'Dismiss',
                 chooseBook: 'Choose a book',
                 chooseChapter: 'Choose a chapter',
                 chooseVerse: 'Choose a verse',
@@ -492,6 +540,9 @@
             setSegmentValue(themeSegment, currentSettings.theme || 'system');
             setSegmentValue(languageSegment, currentSettings.language || 'uk');
             document.getElementById('projectorFontSelect').value = currentSettings.projectorFont || 'Century Gothic';
+
+            // Стан пульта помічника
+            window.electronAPI.getRemoteInfo().then(updateRemoteInfoUI);
 
             // Відображаємо стан паралельного перекладу
             parallelMode = currentSettings.parallelMode === true;
@@ -967,6 +1018,75 @@
             lastOpenedPlaceIndex = index;
             renderSavedPlaces(); // Оновлюємо підсвічування активного місця
         }
+
+        // --- Пульт помічника: перемикач і пропозиції ---
+        const remoteToggle = document.getElementById('remoteToggle');
+        const remoteInfo = document.getElementById('remoteInfo');
+        const remoteUrlText = document.getElementById('remoteUrlText');
+        const proposalCard = document.getElementById('proposalCard');
+        const proposalRef = document.getElementById('proposalRef');
+        const proposalText = document.getElementById('proposalText');
+        const proposalQueueBadge = document.getElementById('proposalQueueBadge');
+        let proposalQueue = [];
+
+        function updateRemoteInfoUI(info) {
+            remoteToggle.checked = info.enabled;
+            remoteInfo.style.display = info.enabled ? 'block' : 'none';
+            remoteUrlText.textContent = info.url;
+        }
+
+        remoteToggle.addEventListener('change', async (e) => {
+            const info = await window.electronAPI.setRemoteEnabled(e.target.checked);
+            updateRemoteInfoUI(info);
+        });
+
+        function renderProposal() {
+            const p = proposalQueue[0];
+            if (!p) {
+                proposalCard.style.display = 'none';
+                return;
+            }
+            proposalRef.textContent = p.reference;
+            const preview = p.text || '';
+            proposalText.textContent = preview.length > 140 ? preview.slice(0, 140) + '…' : preview;
+            if (proposalQueue.length > 1) {
+                proposalQueueBadge.textContent = '+' + (proposalQueue.length - 1);
+                proposalQueueBadge.style.display = 'inline-flex';
+            } else {
+                proposalQueueBadge.style.display = 'none';
+            }
+            proposalCard.style.display = 'flex';
+        }
+
+        window.electronAPI.onRemoteProposal((proposal) => {
+            proposalQueue.push(proposal);
+            renderProposal();
+        });
+
+        document.getElementById('proposalShowBtn').addEventListener('click', async () => {
+            const p = proposalQueue.shift();
+            renderProposal();
+            if (!p) return;
+            const book = allBooks.find(b => b.id == p.bookId);
+            if (!book) return;
+            selectedBook = book;
+            await handleChapterClick(p.chapter);
+            await showVerseOnProjector(p.versesStr);
+            const firstVerse = String(p.versesStr).split(/[-,]/)[0].trim();
+            const verseEl = versesContainer.querySelector(`[data-verse-num="${firstVerse}"]`);
+            if (verseEl) {
+                document.querySelectorAll('#versesContainer .verse-text-item.selected')
+                    .forEach(el => el.classList.remove('selected'));
+                verseEl.classList.add('selected');
+                verseEl.scrollIntoView({ block: 'center' });
+                firstSelectedVerse = parseInt(firstVerse, 10);
+            }
+        });
+
+        document.getElementById('proposalDismissBtn').addEventListener('click', () => {
+            proposalQueue.shift();
+            renderProposal();
+        });
 
         function setupCategoryColorPickers() {
             categoryIds.forEach(category => {

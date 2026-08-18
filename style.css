@@ -711,6 +711,90 @@ details[open] > summary.settings-section-label::after {
     padding: 4px;
 }
 
+/* Картка пропозиції від помічника */
+.proposal-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    border: 1.5px solid var(--primary-color);
+    border-radius: 10px;
+    background: var(--book-item-bg);
+}
+
+.proposal-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.proposal-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary-color);
+    margin-bottom: 3px;
+}
+
+.proposal-queue-badge {
+    display: inline-flex;
+    padding: 1px 7px;
+    border-radius: 9px;
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 10px;
+}
+
+.proposal-ref {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.proposal-text {
+    font-size: 12px;
+    color: var(--text-color);
+    opacity: 0.65;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.proposal-actions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.proposal-show-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 7px;
+    background: var(--button-bg);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.proposal-show-btn:hover {
+    background: var(--button-hover-bg);
+}
+
+.remote-url {
+    display: block;
+    margin-top: 4px;
+    font-size: 14px;
+    color: var(--primary-color);
+    user-select: text;
+    word-break: break-all;
+}
+
 /* Коротке сповіщення внизу екрана */
 .app-toast {
     position: fixed;

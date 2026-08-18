@@ -25,6 +25,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onSettingsUpdated: (callback) => ipcRenderer.on('settings-updated', (event, ...args) => callback(...args)),
   selectBackgroundImage: () => ipcRenderer.invoke('select-background-image'),
   getSettings: () => ipcRenderer.invoke('get-settings'),
+  // API пульта помічника
+  getRemoteInfo: () => ipcRenderer.invoke('get-remote-info'),
+  setRemoteEnabled: (enabled) => ipcRenderer.invoke('set-remote-enabled', enabled),
+  onRemoteProposal: (callback) => ipcRenderer.on('remote-proposal', (event, proposal) => callback(proposal)),
   // API для оновлень
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
