@@ -757,13 +757,11 @@ details[open] > summary.settings-section-label::after {
     word-break: break-all;
 }
 
-/* Кнопка «Подяка» внизу головного екрана */
-.app-footer {
+/* Кнопка «Подяка» внизу налаштувань */
+.settings-footer {
     display: flex;
     justify-content: center;
-    margin-top: 18px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border-color);
+    padding: 16px 0 4px;
 }
 
 .donate-btn {
