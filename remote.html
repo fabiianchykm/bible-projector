@@ -12,7 +12,7 @@
             background: #181c24;
             color: #dde2ee;
             min-height: 100vh;
-            padding-bottom: 90px;
+            padding-bottom: 30px;
         }
         header {
             position: sticky; top: 0; z-index: 10;
@@ -34,33 +34,52 @@
         }
         #crumb { font-size: 13px; color: #8b93a8; margin-top: 8px; min-height: 16px; }
         main { padding: 12px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; }
+
+        /* Сітка "кубиків", як в основній версії */
+        .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
         .grid button {
-            padding: 12px 4px; border: none; border-radius: 8px;
-            background: #2d3347; color: #dde2ee; font-size: 15px; font-weight: 500;
+            aspect-ratio: 1 / 1;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px;
+            padding: 2px; border: none; border-radius: 10px;
+            background: #2d3347; color: #dde2ee; font-size: 13px; font-weight: 600;
+            overflow: hidden;
         }
-        .grid button:active { background: #007bff; }
+        .grid button:active { background: #007bff; color: #fff; }
+        /* Книги: повна назва над скороченням */
+        .grid.books-grid.full-names button { aspect-ratio: unset; min-height: 54px; padding: 5px 3px; }
+        .book-full {
+            display: block; font-size: 8px; font-weight: 500; opacity: 0.65;
+            line-height: 1.2; word-break: break-word; overflow: hidden; max-height: 2.4em;
+            text-align: center;
+        }
+
+        /* Кольори категорій книг (перевизначаються з налаштувань програми) */
+        :root {
+            --c-pentateuch: #FFDDC1; --c-historical: #CCE5FF; --c-poetic: #D4EDDA;
+            --c-prophetic: #FFF3CD; --c-gospels: #F8D7DA; --c-acts: #E2E3E5;
+            --c-epistles: #D6D8EC; --c-revelation: #F0E68C;
+        }
+        .cat-pentateuch { background: var(--c-pentateuch) !important; color: #333 !important; }
+        .cat-historical { background: var(--c-historical) !important; color: #333 !important; }
+        .cat-poetic { background: var(--c-poetic) !important; color: #333 !important; }
+        .cat-prophetic { background: var(--c-prophetic) !important; color: #333 !important; }
+        .cat-gospels { background: var(--c-gospels) !important; color: #333 !important; }
+        .cat-acts { background: var(--c-acts) !important; color: #333 !important; }
+        .cat-epistles { background: var(--c-epistles) !important; color: #333 !important; }
+        .cat-revelation { background: var(--c-revelation) !important; color: #333 !important; }
+
         .verse-item {
             display: flex; gap: 10px; padding: 11px 10px;
-            border-bottom: 1px solid #2a3040; font-size: 15px; line-height: 1.45;
+            border: 1px solid #2a3040; border-radius: 10px; margin-bottom: 6px;
+            font-size: 15px; line-height: 1.45;
         }
-        .verse-item.selected { background: rgba(0,123,255,0.18); border-radius: 8px; }
+        .verse-item:active, .verse-item.sent { background: rgba(0,123,255,0.18); border-color: #007bff; }
         .verse-num { color: #4da3ff; font-weight: 700; flex-shrink: 0; min-width: 22px; }
         .result-ref { color: #4da3ff; font-weight: 600; font-size: 13px; display: block; margin-bottom: 2px; }
         .status { text-align: center; color: #8b93a8; padding: 30px 10px; font-size: 14px; }
-        #proposeBar {
-            position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-            padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
-            background: #1c2130; border-top: 1px solid #343b4f;
-            display: none;
-        }
-        #proposeBtn {
-            width: 100%; padding: 14px; border: none; border-radius: 10px;
-            background: #007bff; color: #fff; font-size: 17px; font-weight: 600;
-        }
-        #proposeBtn:disabled { opacity: 0.6; }
+
         #toast {
-            position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%);
+            position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%);
             background: #16a34a; color: #fff; padding: 10px 18px; border-radius: 10px;
             font-size: 15px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 30;
             white-space: nowrap;
@@ -79,9 +98,6 @@
     </header>
     <main id="content"><div class="status">Завантаження…</div></main>
 
-    <div id="proposeBar">
-        <button id="proposeBtn"></button>
-    </div>
     <div id="toast"></div>
 
     <script>
@@ -89,24 +105,23 @@
         const crumb = document.getElementById('crumb');
         const backBtn = document.getElementById('backBtn');
         const searchInput = document.getElementById('searchInput');
-        const proposeBar = document.getElementById('proposeBar');
-        const proposeBtn = document.getElementById('proposeBtn');
         const toast = document.getElementById('toast');
 
         let books = [];
+        let showFullNames = true;
         let view = 'books'; // books | chapters | verses | results
         let curBook = null;
         let curChapter = null;
-        let selected = null; // {bookId, chapter, verse, text, shortName}
         let searchTimer = null;
         let toastTimer = null;
+        let sending = false; // Захист від подвійного тапу
 
         function showToast(msg, isError) {
             toast.textContent = msg;
             toast.classList.toggle('error', !!isError);
             toast.classList.add('visible');
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => toast.classList.remove('visible'), 2000);
+            toastTimer = setTimeout(() => toast.classList.remove('visible'), 1800);
         }
 
         async function api(path) {
@@ -115,72 +130,65 @@
             return res.json();
         }
 
-        function clearSelection() {
-            selected = null;
-            proposeBar.style.display = 'none';
-            document.querySelectorAll('.verse-item.selected').forEach(el => el.classList.remove('selected'));
-        }
-
-        function selectVerse(el, data) {
-            document.querySelectorAll('.verse-item.selected').forEach(x => x.classList.remove('selected'));
-            if (selected && selected.bookId === data.bookId && selected.chapter === data.chapter && selected.verse === data.verse) {
-                clearSelection();
-                return;
-            }
-            selected = data;
-            el.classList.add('selected');
-            proposeBtn.disabled = false;
-            proposeBtn.textContent = `Запропонувати: ${data.shortName} ${data.chapter}:${data.verse}`;
-            proposeBar.style.display = 'block';
-        }
-
-        async function propose() {
-            if (!selected) return;
-            proposeBtn.disabled = true;
+        // Тап по віршу одразу надсилає пропозицію оператору
+        async function propose(el, data) {
+            if (sending) return;
+            sending = true;
+            el.classList.add('sent');
             try {
                 const res = await fetch('/api/propose', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        bookId: selected.bookId,
-                        chapter: selected.chapter,
-                        versesStr: String(selected.verse),
-                        reference: `${selected.shortName} ${selected.chapter}:${selected.verse}`,
-                        text: selected.text
+                        bookId: data.bookId,
+                        chapter: data.chapter,
+                        versesStr: String(data.verse),
+                        reference: `${data.shortName} ${data.chapter}:${data.verse}`,
+                        text: data.text
                     })
                 });
                 if (!res.ok) throw new Error();
-                showToast('Надіслано ✓');
-                clearSelection();
+                showToast(`Надіслано: ${data.shortName} ${data.chapter}:${data.verse} ✓`);
             } catch (e) {
                 showToast('Не вдалося надіслати', true);
-                proposeBtn.disabled = false;
+            } finally {
+                setTimeout(() => { el.classList.remove('sent'); sending = false; }, 600);
             }
         }
-        proposeBtn.addEventListener('click', propose);
+
+        function buildBooksGrid(list) {
+            const grid = document.createElement('div');
+            grid.className = 'grid books-grid' + (showFullNames ? ' full-names' : '');
+            list.forEach(b => {
+                const btn = document.createElement('button');
+                if (b.category) btn.classList.add('cat-' + b.category);
+                if (showFullNames) {
+                    const full = document.createElement('span');
+                    full.className = 'book-full';
+                    full.textContent = b.long_name;
+                    btn.appendChild(full);
+                }
+                const short = document.createElement('span');
+                short.textContent = b.short_name;
+                btn.appendChild(short);
+                btn.onclick = () => { searchInput.value = ''; showChapters(b); };
+                grid.appendChild(btn);
+            });
+            return grid;
+        }
 
         function showBooks() {
             view = 'books';
             curBook = null; curChapter = null;
-            clearSelection();
             backBtn.style.display = 'none';
             crumb.textContent = 'Оберіть книгу';
-            const grid = document.createElement('div');
-            grid.className = 'grid';
-            books.forEach(b => {
-                const btn = document.createElement('button');
-                btn.textContent = b.short_name;
-                btn.onclick = () => showChapters(b);
-                grid.appendChild(btn);
-            });
             content.innerHTML = '';
-            content.appendChild(grid);
+            content.appendChild(buildBooksGrid(books));
         }
 
         async function showChapters(book) {
             view = 'chapters';
             curBook = book;
-            clearSelection();
             backBtn.style.display = 'block';
             crumb.textContent = book.long_name + ' — оберіть розділ';
             content.innerHTML = '<div class="status">Завантаження…</div>';
@@ -204,9 +212,8 @@
         async function showVerses(book, chapter) {
             view = 'verses';
             curBook = book; curChapter = chapter;
-            clearSelection();
             backBtn.style.display = 'block';
-            crumb.textContent = `${book.long_name} ${chapter} — торкніться вірша`;
+            crumb.textContent = `${book.long_name} ${chapter} — тапніть вірш, щоб запропонувати`;
             content.innerHTML = '<div class="status">Завантаження…</div>';
             try {
                 const verses = await api(`/api/chapter-text?bookId=${book.id}&chapter=${chapter}`);
@@ -215,7 +222,7 @@
                     const item = document.createElement('div');
                     item.className = 'verse-item';
                     item.innerHTML = `<span class="verse-num">${v.verse}</span><span>${escapeHtml(v.text)}</span>`;
-                    item.onclick = () => selectVerse(item, {
+                    item.onclick = () => propose(item, {
                         bookId: book.id, chapter, verse: v.verse, text: v.text, shortName: book.short_name
                     });
                     content.appendChild(item);
@@ -231,9 +238,8 @@
 
         async function doSearch(q) {
             view = 'results';
-            clearSelection();
             backBtn.style.display = 'block';
-            crumb.textContent = 'Результати пошуку';
+            crumb.textContent = 'Результати пошуку — тапніть вірш, щоб запропонувати';
             content.innerHTML = '<div class="status">Пошук…</div>';
             try {
                 const results = await api('/api/search?q=' + encodeURIComponent(q));
@@ -246,7 +252,7 @@
                     const item = document.createElement('div');
                     item.className = 'verse-item';
                     item.innerHTML = `<span><span class="result-ref">${escapeHtml(r.shortName)} ${r.chapter}:${r.verse}</span>${escapeHtml(r.text)}</span>`;
-                    item.onclick = () => selectVerse(item, {
+                    item.onclick = () => propose(item, {
                         bookId: r.bookId, chapter: r.chapter, verse: r.verse, text: r.text, shortName: r.shortName
                     });
                     content.appendChild(item);
@@ -265,23 +271,14 @@
                 searchTimer = setTimeout(() => doSearch(q), 450);
                 return;
             }
-            // Фільтр книг за назвою
             view = 'books';
             backBtn.style.display = 'block';
             crumb.textContent = 'Оберіть книгу';
             const ql = q.toLowerCase();
             const filtered = books.filter(b =>
                 b.short_name.toLowerCase().startsWith(ql) || b.long_name.toLowerCase().startsWith(ql));
-            const grid = document.createElement('div');
-            grid.className = 'grid';
-            filtered.forEach(b => {
-                const btn = document.createElement('button');
-                btn.textContent = b.short_name;
-                btn.onclick = () => { searchInput.value = ''; showChapters(b); };
-                grid.appendChild(btn);
-            });
             content.innerHTML = filtered.length ? '' : '<div class="status">Книгу не знайдено</div>';
-            if (filtered.length) content.appendChild(grid);
+            if (filtered.length) content.appendChild(buildBooksGrid(filtered));
         });
 
         backBtn.addEventListener('click', () => {
@@ -290,10 +287,17 @@
             else showBooks();
         });
 
-        // Старт
+        // Старт: список книг + кольори категорій з налаштувань програми
         (async () => {
             try {
-                books = await api('/api/books');
+                const data = await api('/api/books');
+                books = data.books || [];
+                showFullNames = data.showFullBookName !== false;
+                if (data.categoryColors) {
+                    for (const cat in data.categoryColors) {
+                        document.documentElement.style.setProperty('--c-' + cat, data.categoryColors[cat]);
+                    }
+                }
                 showBooks();
             } catch (e) {
                 content.innerHTML = '<div class="status">Немає зв\'язку з програмою.<br>Перевірте, що комп\'ютер увімкнений і ви в одній Wi-Fi мережі.</div>';

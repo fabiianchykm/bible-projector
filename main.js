@@ -711,17 +711,14 @@ ipcMain.handle('switch-translation', (event, dbName) => {
 });
 
 // Команда на отримання списку книг з БД
-ipcMain.handle('get-books', async () => {
-  if (!db) {
-    console.warn('Спроба отримати книги без підключеної бази даних.');
-    return []; // Повертаємо порожній масив, якщо немає підключення до БД
-  }
-  try {
-    // Припустимо, у вас є таблиця 'books' з колонками 'id', 'short_name', 'long_name'
+// Список книг поточного перекладу з обчисленими категоріями
+// (використовується і головним вікном, і пультом помічника)
+function getBooksWithCategories() {
+  if (!db) return [];
     // Використовуємо 'book_number' як ідентифікатор і даємо йому псевдонім 'id' для сумісності з фронтендом
     const stmt = db.prepare('SELECT book_number as id, short_name, long_name FROM books ORDER BY book_number');
     const books = stmt.all();
-    
+
     // Знаходимо індекс Євангелія від Матвія. 
     // Це найнадійніший спосіб визначити структуру Біблії (Синодальна чи Протестантська),
     // не покладаючись на внутрішні ID, які часто відрізняються в різних перекладах.
@@ -774,6 +771,15 @@ ipcMain.handle('get-books', async () => {
     });
 
     return booksWithCategory;
+}
+
+ipcMain.handle('get-books', async () => {
+  if (!db) {
+    console.warn('Спроба отримати книги без підключеної бази даних.');
+    return []; // Повертаємо порожній масив, якщо немає підключення до БД
+  }
+  try {
+    return getBooksWithCategories();
   } catch (err) {
     console.error('Помилка при зчитуванні книг з БД:', err);
     throw err; // Перекидаємо помилку далі, щоб фронтенд її отримав
@@ -1044,7 +1050,11 @@ function startRemoteServer() {
 
       } else if (u.pathname === '/api/books') {
         if (!db) return remoteJson(res, 503, { error: 'База даних недоступна' });
-        remoteJson(res, 200, db.prepare('SELECT book_number as id, short_name, long_name FROM books ORDER BY book_number').all());
+        remoteJson(res, 200, {
+          books: getBooksWithCategories(),
+          categoryColors: projectorSettings.categoryColors,
+          showFullBookName: projectorSettings.showFullBookName !== false
+        });
 
       } else if (u.pathname === '/api/chapters') {
         if (!db) return remoteJson(res, 503, { error: 'База даних недоступна' });
@@ -1107,6 +1117,10 @@ function startRemoteServer() {
       console.error('[remote]', e);
       try { remoteJson(res, 500, { error: e.message }); } catch (_) {}
     }
+  });
+  remoteServer.on('error', (err) => {
+    log.error('Remote helper server error:', err.message);
+    remoteServer = null;
   });
   remoteServer.listen(REMOTE_PORT, '0.0.0.0');
   log.info(`Remote helper server started at ${remoteUrl()}`);
