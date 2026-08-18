@@ -657,6 +657,15 @@
             });
         }
 
+        // Ховає вірш з екрана проектора і знімає виділення у списку
+        function hideVerseFromProjector() {
+            window.electronAPI.showVerse('');
+            lastShownVerse = null;
+            firstSelectedVerse = null;
+            document.querySelectorAll('#versesContainer .verse-text-item.selected')
+                .forEach(el => el.classList.remove('selected'));
+        }
+
         // Повторно показує поточний вірш (щоб проектор оновився при зміні режиму/перекладу)
         async function refreshShownVerse() {
             if (lastShownVerse && selectedBook && selectedChapter) {
@@ -1238,10 +1247,7 @@
                     closeVerseBtn.innerHTML = '&times;';
                     closeVerseBtn.onclick = (e) => {
                         e.stopPropagation(); // Не викликати клік по віршу
-                        window.electronAPI.showVerse('');
-                        lastShownVerse = null;
-                        firstSelectedVerse = null;
-                        verseItem.classList.remove('selected');
+                        hideVerseFromProjector();
                     };
 
                     verseItem.appendChild(verseNumberSpan);
@@ -1278,9 +1284,7 @@
  
             if (isAlreadySelected) {
                 // Якщо клікнули на вже вибраний вірш, то просто знімаємо виділення і ховаємо текст.
-                window.electronAPI.showVerse('');
-                lastShownVerse = null;
-                firstSelectedVerse = null; // Скидаємо вибір
+                hideVerseFromProjector();
             } else {
                 // Якщо клікнули на новий вірш:
                 // 1. Виділяємо його.
@@ -1716,6 +1720,13 @@
 
             // 3. Обробка повернення назад
             if (e.key === 'Escape' || e.key === 'Delete' || e.key === 'Backspace') {
+                // Esc: якщо на проекторі показаний вірш — спочатку ховаємо його,
+                // і лише наступне натискання повертає назад
+                if (e.key === 'Escape' && lastShownVerse) {
+                    e.preventDefault();
+                    hideVerseFromProjector();
+                    return;
+                }
                 // Якщо кнопка "Назад" видима, імітуємо клік по ній
                 if (backBtn.style.display !== 'none') {
                     e.preventDefault();
