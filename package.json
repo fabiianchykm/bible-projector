@@ -34,7 +34,7 @@
         "zip",
         "dmg"
       ],
-      "icon": "icon.png",
+      "icon": "icon-mac.png",
       "hardenedRuntime": true,
       "gatekeeperAssess": false
     },

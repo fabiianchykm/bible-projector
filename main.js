@@ -22,6 +22,8 @@ let projectorSettings = {
   backgroundImage: null, // Шлях до зображення
   showFullBookName: true, // Показувати повну назву книги над скороченням
   theme: 'system', // Тема інтерфейсу: 'system' | 'light' | 'dark'
+  language: 'uk', // Мова інтерфейсу: 'uk' | 'en'
+  projectorFont: 'Century Gothic', // Шрифт тексту на проекторі
   parallelMode: false, // Показувати два переклади одночасно
   secondaryTranslation: null, // Файл другого перекладу для паралельного показу
   categoryColors: {
@@ -472,7 +474,7 @@ app.whenReady().then(() => {
 
   // Встановлюємо іконку для Dock на macOS
   if (process.platform === 'darwin') {
-    app.dock.setIcon(path.join(__dirname, 'icon.png'));
+    app.dock.setIcon(path.join(__dirname, 'icon-mac.png'));
   }
 
   createAdminWindow();

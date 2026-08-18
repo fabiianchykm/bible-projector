@@ -105,11 +105,29 @@
             }
         });
 
+        // Доступні шрифти тексту (назва з налаштувань -> CSS-стек)
+        const FONT_STACKS = {
+            'Century Gothic': "'Century Gothic', CenturyGothic, AppleGothic, sans-serif",
+            'Times New Roman': "'Times New Roman', Times, serif",
+            'Georgia': "Georgia, 'Times New Roman', serif",
+            'Arial': "Arial, Helvetica, sans-serif",
+            'Verdana': "Verdana, Geneva, sans-serif"
+        };
+
         // Слухаємо оновлення налаштувань
         window.electronAPI.onSettingsUpdated((settings) => {
             // Оновлення кольору фону
             if (settings.hasOwnProperty('backgroundColor')) {
                 document.body.style.backgroundColor = settings.backgroundColor;
+            }
+
+            // Оновлення шрифту тексту
+            if (settings.hasOwnProperty('projectorFont')) {
+                document.body.style.fontFamily = FONT_STACKS[settings.projectorFont] || FONT_STACKS['Century Gothic'];
+                // Інший шрифт займає інше місце — переобраховуємо розмір
+                if (verseContainer.style.display !== 'none' && verseTextElement.innerText) {
+                    fitVerseText();
+                }
             }
 
             // Оновлення фонового зображення

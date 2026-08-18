@@ -569,6 +569,59 @@ details[open] > summary.settings-section-label::after {
     color: var(--text-color);
 }
 
+/* Сегментований перемикач (тема, мова) */
+.segmented {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--input-border-color);
+    border-radius: 7px;
+    flex-shrink: 0;
+}
+
+.segmented button {
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: background-color 0.12s, color 0.12s;
+}
+
+.segmented button:hover {
+    background-color: var(--book-item-hover-bg);
+    color: var(--text-color);
+}
+
+.segmented button.active {
+    background-color: var(--button-bg);
+    color: #fff;
+}
+
+.segmented button.active:hover {
+    background-color: var(--button-bg);
+    color: #fff;
+}
+
+/* Селекти в налаштуваннях (другий переклад, шрифт) */
+.settings-section-body .select-wrapper select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 6px 28px 6px 10px;
+    border: 1px solid var(--input-border-color);
+    border-radius: 7px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+    max-width: 190px;
+}
+
 .setting-info-text {
     font-size: 11px;
     color: var(--text-color);
@@ -656,6 +709,18 @@ details[open] > summary.settings-section-label::after {
     color: var(--text-color);
     opacity: 0.5;
     padding: 4px;
+}
+
+/* Підзаголовок мови у списку доступних модулів */
+.modules-lang-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin: 8px 4px 4px;
+}
+
+.modules-lang-label:first-child {
+    margin-top: 2px;
 }
 
 .module-item {

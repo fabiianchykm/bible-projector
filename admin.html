@@ -10,9 +10,9 @@
     <div class="container">
         <div class="top-bar">
             <div class="translation-selector">
-                <label for="translationPickerBtn">Переклад</label>
+                <label for="translationPickerBtn" data-i18n="translationLabel">Переклад</label>
                 <select id="translationSelect" style="display: none;"></select>
-                <button id="translationPickerBtn" class="translation-picker" title="Обрати або скачати переклад">
+                <button id="translationPickerBtn" class="translation-picker" data-i18n-title="pickerTitle" title="Обрати або скачати переклад">
                     <span id="translationPickerLabel">—</span>
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="6 9 12 15 18 9"/>
@@ -24,7 +24,7 @@
                     <div class="modules-group-divider"></div>
                     <div class="modules-group-label" id="availableModulesLabel">Можна скачати</div>
                     <div id="availableModulesList">
-                        <div class="modules-status">Завантаження списку…</div>
+                        <div class="modules-status" data-i18n="loadingList">Завантаження списку…</div>
                     </div>
                 </div>
             </div>
@@ -34,9 +34,9 @@
                         <rect x="2" y="3" width="20" height="14" rx="2"/>
                         <polyline points="8,21 12,17 16,21"/>
                     </svg>
-                    Відкрити
+                    <span data-i18n="open">Відкрити</span>
                 </button>
-                <button id="settingsBtn" title="Налаштування">
+                <button id="settingsBtn" data-i18n-title="settingsTitle" title="Налаштування">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -47,13 +47,13 @@
 
         <div id="update-notification" class="update-notification" style="display: none;">
             <span id="update-message"></span>
-            <button id="restart-app-btn" style="display: none;">Перезапустити</button>
+            <button id="restart-app-btn" style="display: none;" data-i18n="restart">Перезапустити</button>
         </div>
 
         <div class="navigation-header">
             <button id="backBtn" style="display: none;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                Назад
+                <span data-i18n="back">Назад</span>
             </button>
             <h2 id="currentSelectionHeader">Оберіть книгу</h2>
             <span id="gridNavBadge" class="grid-nav-badge" style="display: none;"></span>
@@ -77,7 +77,7 @@
     <!-- Пошуковий оверлей -->
     <div id="searchOverlay" class="search-overlay" style="display: none;">
         <div class="search-overlay-content">
-            <input type="text" id="smartSearchInput" placeholder="Введіть книгу, розділ, вірш...">
+            <input type="text" id="smartSearchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Введіть книгу, розділ, вірш...">
             <div id="suggestionsBox" class="suggestions-box"></div>
         </div>
     </div>
@@ -87,8 +87,8 @@
         <div class="settings-panel">
 
             <div class="settings-header">
-                <span class="settings-title">Налаштування</span>
-                <button id="closeSettingsBtn" class="settings-close-btn" title="Закрити">
+                <span class="settings-title" data-i18n="settingsTitle">Налаштування</span>
+                <button id="closeSettingsBtn" class="settings-close-btn" data-i18n-title="close" title="Закрити">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
@@ -98,20 +98,33 @@
             <div class="settings-body">
 
                 <details class="settings-section" open>
-                    <summary class="settings-section-label">Проектор</summary>
+                    <summary class="settings-section-label"><span data-i18n="sectionProjector">Проектор</span></summary>
                     <div class="settings-section-body">
                         <div class="setting-row">
-                            <span>Колір фону</span>
+                            <span data-i18n="bgColor">Колір фону</span>
                             <div class="color-swatch-wrap">
                                 <input type="color" id="projectorBgColor" value="#000000">
                             </div>
                         </div>
 
                         <div class="setting-row">
-                            <span>Фонове зображення</span>
+                            <span data-i18n="font">Шрифт</span>
+                            <div class="select-wrapper">
+                                <select id="projectorFontSelect">
+                                    <option value="Century Gothic" style="font-family: 'Century Gothic', sans-serif;">Century Gothic</option>
+                                    <option value="Times New Roman" style="font-family: 'Times New Roman', serif;">Times New Roman</option>
+                                    <option value="Georgia" style="font-family: Georgia, serif;">Georgia</option>
+                                    <option value="Arial" style="font-family: Arial, sans-serif;">Arial</option>
+                                    <option value="Verdana" style="font-family: Verdana, sans-serif;">Verdana</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="setting-row">
+                            <span data-i18n="bgImage">Фонове зображення</span>
                             <div class="button-group">
-                                <button id="selectBgImageBtn" class="btn-sm">Обрати</button>
-                                <button id="removeBgImageBtn" class="btn-sm btn-sm-ghost">Скинути</button>
+                                <button id="selectBgImageBtn" class="btn-sm" data-i18n="choose">Обрати</button>
+                                <button id="removeBgImageBtn" class="btn-sm btn-sm-ghost" data-i18n="reset">Скинути</button>
                             </div>
                         </div>
                         <div id="bgImageName" class="setting-info-text"></div>
@@ -119,72 +132,77 @@
                 </details>
 
                 <details class="settings-section">
-                    <summary class="settings-section-label">Паралельний переклад</summary>
+                    <summary class="settings-section-label"><span data-i18n="sectionParallel">Паралельний переклад</span></summary>
                     <div class="settings-section-body">
                         <div class="setting-row">
-                            <span>Два переклади одночасно</span>
+                            <span data-i18n="parallelToggle">Два переклади одночасно</span>
                             <label class="toggle">
                                 <input type="checkbox" id="parallelModeToggle">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
                         <div class="setting-row" id="secondaryTranslationRow" style="display: none;">
-                            <span>Другий переклад</span>
+                            <span data-i18n="secondTranslation">Другий переклад</span>
                             <div class="select-wrapper">
                                 <select id="secondaryTranslationSelect"></select>
                             </div>
                         </div>
-                        <div class="setting-info-text">Один переклад показується зверху, другий — знизу.</div>
+                        <div class="setting-info-text" data-i18n="parallelInfo">Один переклад показується зверху, другий — знизу.</div>
                     </div>
                 </details>
 
                 <details class="settings-section">
-                    <summary class="settings-section-label">Кольори категорій</summary>
+                    <summary class="settings-section-label"><span data-i18n="sectionColors">Кольори категорій</span></summary>
                     <div class="settings-section-body">
                         <div class="category-color-grid">
-                            <div class="color-chip"><input type="color" id="color-pentateuch"><span>П'ятикнижжя</span></div>
-                            <div class="color-chip"><input type="color" id="color-gospels"><span>Євангелії</span></div>
-                            <div class="color-chip"><input type="color" id="color-historical"><span>Історичні</span></div>
-                            <div class="color-chip"><input type="color" id="color-acts"><span>Дії Апостолів</span></div>
-                            <div class="color-chip"><input type="color" id="color-poetic"><span>Поетичні</span></div>
-                            <div class="color-chip"><input type="color" id="color-epistles"><span>Послання</span></div>
-                            <div class="color-chip"><input type="color" id="color-prophetic"><span>Пророчі</span></div>
-                            <div class="color-chip"><input type="color" id="color-revelation"><span>Об'явлення</span></div>
+                            <div class="color-chip"><input type="color" id="color-pentateuch"><span data-i18n="catPentateuch">П'ятикнижжя</span></div>
+                            <div class="color-chip"><input type="color" id="color-gospels"><span data-i18n="catGospels">Євангелії</span></div>
+                            <div class="color-chip"><input type="color" id="color-historical"><span data-i18n="catHistorical">Історичні</span></div>
+                            <div class="color-chip"><input type="color" id="color-acts"><span data-i18n="catActs">Дії Апостолів</span></div>
+                            <div class="color-chip"><input type="color" id="color-poetic"><span data-i18n="catPoetic">Поетичні</span></div>
+                            <div class="color-chip"><input type="color" id="color-epistles"><span data-i18n="catEpistles">Послання</span></div>
+                            <div class="color-chip"><input type="color" id="color-prophetic"><span data-i18n="catProphetic">Пророчі</span></div>
+                            <div class="color-chip"><input type="color" id="color-revelation"><span data-i18n="catRevelation">Об'явлення</span></div>
                         </div>
                     </div>
                 </details>
 
                 <details class="settings-section">
-                    <summary class="settings-section-label">Інтерфейс</summary>
+                    <summary class="settings-section-label"><span data-i18n="sectionInterface">Інтерфейс</span></summary>
                     <div class="settings-section-body">
                         <div class="setting-row">
-                            <span>Повна назва над скороченням</span>
+                            <span data-i18n="languageLabel">Мова / Language</span>
+                            <div class="segmented" id="languageSegment">
+                                <button type="button" data-value="uk">Укр</button>
+                                <button type="button" data-value="en">Eng</button>
+                            </div>
+                        </div>
+                        <div class="setting-row">
+                            <span data-i18n="fullBookName">Повна назва над скороченням</span>
                             <label class="toggle">
                                 <input type="checkbox" id="showFullBookNameToggle">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
                         <div class="setting-row">
-                            <span>Тема</span>
-                            <div class="select-wrapper">
-                                <select id="themeSelect">
-                                    <option value="system">Як у системі</option>
-                                    <option value="light">Світла</option>
-                                    <option value="dark">Темна</option>
-                                </select>
+                            <span data-i18n="theme">Тема</span>
+                            <div class="segmented" id="themeSegment">
+                                <button type="button" data-value="system" data-i18n="themeSystem">Як у системі</button>
+                                <button type="button" data-value="light" data-i18n="themeLight">Світла</button>
+                                <button type="button" data-value="dark" data-i18n="themeDark">Темна</button>
                             </div>
                         </div>
                     </div>
                 </details>
 
                 <details class="settings-section settings-section--last">
-                    <summary class="settings-section-label">Оновлення <span class="settings-label-hint">v<span id="appVersion">—</span></span></summary>
+                    <summary class="settings-section-label"><span data-i18n="sectionUpdates">Оновлення</span> <span class="settings-label-hint">v<span id="appVersion">—</span></span></summary>
                     <div class="settings-section-body">
                         <div class="setting-row">
-                            <span>Версія: <span id="appVersionRow">—</span></span>
+                            <span><span data-i18n="versionLabel">Версія:</span> <span id="appVersionRow">—</span></span>
                             <div class="button-group">
-                                <button id="checkUpdatesBtn" class="btn-sm">Перевірити оновлення</button>
-                                <button id="installUpdateBtn" class="btn-sm" style="display: none;">Перезапустити й оновити</button>
+                                <button id="checkUpdatesBtn" class="btn-sm" data-i18n="checkUpdates">Перевірити оновлення</button>
+                                <button id="installUpdateBtn" class="btn-sm" style="display: none;" data-i18n="installUpdate">Перезапустити й оновити</button>
                             </div>
                         </div>
                         <div id="updateStatusText" class="setting-info-text"></div>
@@ -196,6 +214,148 @@
     </div>
 
     <script>
+        // --- Локалізація інтерфейсу ---
+        const I18N = {
+            uk: {
+                translationLabel: 'Переклад',
+                pickerTitle: 'Обрати або скачати переклад',
+                open: 'Відкрити',
+                settingsTitle: 'Налаштування',
+                close: 'Закрити',
+                back: 'Назад',
+                restart: 'Перезапустити',
+                searchPlaceholder: 'Введіть книгу, розділ, вірш...',
+                sectionProjector: 'Проектор',
+                bgColor: 'Колір фону',
+                font: 'Шрифт',
+                bgImage: 'Фонове зображення',
+                choose: 'Обрати',
+                reset: 'Скинути',
+                sectionParallel: 'Паралельний переклад',
+                parallelToggle: 'Два переклади одночасно',
+                secondTranslation: 'Другий переклад',
+                parallelInfo: 'Один переклад показується зверху, другий — знизу.',
+                sectionColors: 'Кольори категорій',
+                catPentateuch: "П'ятикнижжя", catGospels: 'Євангелії', catHistorical: 'Історичні',
+                catActs: 'Дії Апостолів', catPoetic: 'Поетичні', catEpistles: 'Послання',
+                catProphetic: 'Пророчі', catRevelation: "Об'явлення",
+                sectionInterface: 'Інтерфейс',
+                languageLabel: 'Мова / Language',
+                fullBookName: 'Повна назва над скороченням',
+                theme: 'Тема', themeSystem: 'Як у системі', themeLight: 'Світла', themeDark: 'Темна',
+                sectionUpdates: 'Оновлення',
+                versionLabel: 'Версія:',
+                checkUpdates: 'Перевірити оновлення',
+                installUpdate: 'Перезапустити й оновити',
+                downloaded: 'Скачані',
+                available: 'Можна скачати',
+                loadingList: 'Завантаження списку…',
+                listError: 'Не вдалося завантажити список. Перевірте інтернет.',
+                allDownloaded: 'Усі модулі з каталогу вже скачані ✓',
+                download: 'Скачати',
+                downloading: 'Скачується…',
+                currentTranslation: 'Поточний переклад',
+                clickToSwitch: 'Натисніть, щоб переключитись',
+                nowShowing: 'зараз показується',
+                downloadModuleError: 'Не вдалося завантажити модуль: {msg}',
+                langNames: { ukr: 'Українська', rus: 'Російська', eng: 'Англійська' },
+                chooseBook: 'Оберіть книгу',
+                chooseChapter: 'Оберіть розділ',
+                chooseVerse: 'Оберіть вірш',
+                searching: 'Пошук…',
+                nothingFound: 'Нічого не знайдено',
+                bookNotFoundAlert: 'Книгу "{book}" не знайдено.',
+                switchTranslationError: 'Не вдалося переключити переклад: {msg}',
+                checkingUpdates: 'Перевіряємо наявність оновлень…',
+                updateFoundBanner: 'Знайдено оновлення! Завантажується...',
+                updateFoundVersion: 'Знайдено нову версію {v}. Завантажується…',
+                updateFound: 'Знайдено оновлення. Завантажується…',
+                latestVersion: 'У вас найновіша версія.',
+                updateProgress: 'Завантаження оновлення: {p}%',
+                updateDownloadedBanner: 'Оновлення завантажено. Перезапустіть програму, щоб встановити.',
+                updateReady: 'Оновлення завантажено та готове до встановлення.',
+                updateError: 'Помилка оновлення: {msg}'
+            },
+            en: {
+                translationLabel: 'Translation',
+                pickerTitle: 'Choose or download a translation',
+                open: 'Open',
+                settingsTitle: 'Settings',
+                close: 'Close',
+                back: 'Back',
+                restart: 'Restart',
+                searchPlaceholder: 'Type book, chapter, verse...',
+                sectionProjector: 'Projector',
+                bgColor: 'Background color',
+                font: 'Font',
+                bgImage: 'Background image',
+                choose: 'Choose',
+                reset: 'Reset',
+                sectionParallel: 'Parallel translation',
+                parallelToggle: 'Two translations at once',
+                secondTranslation: 'Second translation',
+                parallelInfo: 'One translation is shown on top, the other below.',
+                sectionColors: 'Category colors',
+                catPentateuch: 'Pentateuch', catGospels: 'Gospels', catHistorical: 'Historical',
+                catActs: 'Acts', catPoetic: 'Poetic', catEpistles: 'Epistles',
+                catProphetic: 'Prophetic', catRevelation: 'Revelation',
+                sectionInterface: 'Interface',
+                languageLabel: 'Language / Мова',
+                fullBookName: 'Full name above abbreviation',
+                theme: 'Theme', themeSystem: 'Same as system', themeLight: 'Light', themeDark: 'Dark',
+                sectionUpdates: 'Updates',
+                versionLabel: 'Version:',
+                checkUpdates: 'Check for updates',
+                installUpdate: 'Restart & update',
+                downloaded: 'Downloaded',
+                available: 'Available to download',
+                loadingList: 'Loading list…',
+                listError: 'Could not load the list. Check your internet connection.',
+                allDownloaded: 'All catalog modules are already downloaded ✓',
+                download: 'Download',
+                downloading: 'Downloading…',
+                currentTranslation: 'Current translation',
+                clickToSwitch: 'Click to switch',
+                nowShowing: 'now showing',
+                downloadModuleError: 'Failed to download module: {msg}',
+                langNames: { ukr: 'Ukrainian', rus: 'Russian', eng: 'English' },
+                chooseBook: 'Choose a book',
+                chooseChapter: 'Choose a chapter',
+                chooseVerse: 'Choose a verse',
+                searching: 'Searching…',
+                nothingFound: 'Nothing found',
+                bookNotFoundAlert: 'Book "{book}" not found.',
+                switchTranslationError: 'Failed to switch translation: {msg}',
+                checkingUpdates: 'Checking for updates…',
+                updateFoundBanner: 'Update found! Downloading...',
+                updateFoundVersion: 'New version {v} found. Downloading…',
+                updateFound: 'Update found. Downloading…',
+                latestVersion: 'You have the latest version.',
+                updateProgress: 'Downloading update: {p}%',
+                updateDownloadedBanner: 'Update downloaded. Restart the app to install.',
+                updateReady: 'Update downloaded and ready to install.',
+                updateError: 'Update error: {msg}'
+            }
+        };
+
+        let currentLang = 'uk';
+
+        function t(key, vars) {
+            let s = (I18N[currentLang] && I18N[currentLang][key]) ?? I18N.uk[key] ?? key;
+            if (typeof s === 'string' && vars) {
+                for (const k in vars) s = s.replace(`{${k}}`, vars[k]);
+            }
+            return s;
+        }
+
+        function applyLanguage(lang) {
+            currentLang = I18N[lang] ? lang : 'uk';
+            document.documentElement.lang = currentLang;
+            document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+            document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+        }
+
         // --- DOM елементи ---
         const translationSelect = document.getElementById('translationSelect');
         const booksContainer = document.getElementById('booksContainer');
@@ -215,7 +375,13 @@
         const removeBgImageBtn = document.getElementById('removeBgImageBtn');
         const bgImageName = document.getElementById('bgImageName');
         const parallelModeToggle = document.getElementById('parallelModeToggle');
-        const themeSelect = document.getElementById('themeSelect');
+        const themeSegment = document.getElementById('themeSegment');
+        const languageSegment = document.getElementById('languageSegment');
+
+        // Сегментований перемикач: підсвічує активну кнопку
+        function setSegmentValue(segment, value) {
+            [...segment.children].forEach(b => b.classList.toggle('active', b.dataset.value === value));
+        }
         const secondaryTranslationRow = document.getElementById('secondaryTranslationRow');
         const secondaryTranslationSelect = document.getElementById('secondaryTranslationSelect');
 
@@ -228,6 +394,7 @@
         let userTypedQuery = ''; // Зберігаємо те, що ввів користувач
         let gridNavBuffer = '';   // Набрані цифри для навігації по сітці
         let gridNavTimeout = null; // Таймер скидання набраного числа
+        let currentViewName = 'books';     // Поточний екран навігації (books/chapters/verses)
         let parallelMode = false;          // Чи показувати два переклади одночасно
         let secondaryTranslation = null;   // Файл другого перекладу
         let lastShownVerse = null;         // Останній показаний вірш (для оновлення при зміні режиму)
@@ -248,6 +415,7 @@
         // --- Ініціалізація ---
         document.addEventListener('DOMContentLoaded', async () => {
             const settings = await window.electronAPI.getSettings();
+            applyLanguage(settings.language || 'uk');
             applyCategoryColors(settings.categoryColors || {});
             applyShowFullBookName(settings.showFullBookName !== false);
             // Стан паралельного перекладу (читаємо до заповнення списків перекладів)
@@ -291,8 +459,10 @@
             // Встановлюємо стан toggle повної назви
             document.getElementById('showFullBookNameToggle').checked = currentSettings.showFullBookName !== false;
 
-            // Встановлюємо обрану тему
-            themeSelect.value = currentSettings.theme || 'system';
+            // Встановлюємо обрану тему, мову та шрифт проектора
+            setSegmentValue(themeSegment, currentSettings.theme || 'system');
+            setSegmentValue(languageSegment, currentSettings.language || 'uk');
+            document.getElementById('projectorFontSelect').value = currentSettings.projectorFont || 'Century Gothic';
 
             // Відображаємо стан паралельного перекладу
             parallelMode = currentSettings.parallelMode === true;
@@ -322,9 +492,28 @@
             }
         });
 
-        themeSelect.addEventListener('change', () => {
+        document.getElementById('projectorFontSelect').addEventListener('change', (e) => {
+            window.electronAPI.updateProjectorSettings({ projectorFont: e.target.value });
+        });
+
+        themeSegment.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-value]');
+            if (!btn) return;
+            setSegmentValue(themeSegment, btn.dataset.value);
             // Головний процес змінить nativeTheme і надішле 'theme-updated'
-            window.electronAPI.updateProjectorSettings({ theme: themeSelect.value });
+            window.electronAPI.updateProjectorSettings({ theme: btn.dataset.value });
+        });
+
+        languageSegment.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-value]');
+            if (!btn) return;
+            setSegmentValue(languageSegment, btn.dataset.value);
+            applyLanguage(btn.dataset.value);
+            window.electronAPI.updateProjectorSettings({ language: btn.dataset.value });
+            // Оновлюємо динамічні тексти: заголовок навігації та панель модулів
+            if (currentViewName) updateView(currentViewName);
+            renderInstalledModules();
+            renderAvailableModules();
         });
 
         removeBgImageBtn.addEventListener('click', () => {
@@ -403,7 +592,9 @@
         const availableModulesList = document.getElementById('availableModulesList');
         let modulesCatalogLoading = false;
 
-        const languageNames = { ukr: 'українська', rus: 'російська', eng: 'англійська' };
+        function languageName(code) {
+            return (t('langNames') || {})[code] || code;
+        }
 
         function isModulesPanelOpen() {
             return modulesPanel.style.display !== 'none';
@@ -448,7 +639,7 @@
         function renderInstalledModules() {
             installedModulesList.innerHTML = '';
             const options = [...translationSelect.options];
-            installedModulesLabel.textContent = `Скачані · ${options.length}`;
+            installedModulesLabel.textContent = `${t('downloaded')} · ${options.length}`;
             options.forEach(option => {
                 const isCurrent = option.value === translationSelect.value;
 
@@ -469,13 +660,13 @@
                 if (isCurrent) {
                     const meta = document.createElement('div');
                     meta.className = 'module-meta module-meta--current';
-                    meta.textContent = 'зараз показується';
+                    meta.textContent = t('nowShowing');
                     info.appendChild(meta);
                 }
 
                 row.appendChild(check);
                 row.appendChild(info);
-                row.title = isCurrent ? 'Поточний переклад' : 'Натисніть, щоб переключитись';
+                row.title = isCurrent ? t('currentTranslation') : t('clickToSwitch');
                 row.onclick = () => {
                     if (translationSelect.value !== option.value) {
                         translationSelect.value = option.value;
@@ -498,8 +689,8 @@
                 renderAvailableModules();
             } catch (err) {
                 console.error('Не вдалося завантажити каталог модулів:', err);
-                availableModulesLabel.textContent = 'Можна скачати';
-                availableModulesList.innerHTML = '<div class="modules-status">Не вдалося завантажити список. Перевірте інтернет.</div>';
+                availableModulesLabel.textContent = t('available');
+                availableModulesList.innerHTML = `<div class="modules-status">${t('listError')}</div>`;
             } finally {
                 modulesCatalogLoading = false;
             }
@@ -507,49 +698,74 @@
 
         function renderAvailableModules() {
             availableModulesList.innerHTML = '';
-            availableModulesLabel.textContent = `Можна скачати · ${availableModulesCache.length}`;
+            availableModulesLabel.textContent = `${t('available')} · ${availableModulesCache.length}`;
             if (availableModulesCache.length === 0) {
-                availableModulesList.innerHTML = '<div class="modules-status">Усі модулі з каталогу вже скачані ✓</div>';
+                availableModulesList.innerHTML = `<div class="modules-status">${t('allDownloaded')}</div>`;
                 return;
             }
+
+            // Групуємо за мовою перекладу: спочатку українська, потім російська, англійська, решта
+            const langOrder = ['ukr', 'rus', 'eng'];
+            const groups = new Map();
             availableModulesCache.forEach(mod => {
-                const row = document.createElement('div');
-                row.className = 'module-item module-item--available';
-
-                const info = document.createElement('div');
-                info.className = 'module-info';
-
-                const name = document.createElement('div');
-                name.className = 'module-name';
-                name.textContent = mod.localName || mod.name;
-                name.title = mod.localName || mod.name;
-
-                const meta = document.createElement('div');
-                meta.className = 'module-meta';
-                const lang = languageNames[mod.language] || mod.language;
-                meta.textContent = `${lang} · ${(mod.sizeBytes / 1024 / 1024).toFixed(1)} МБ`;
-
-                info.appendChild(name);
-                info.appendChild(meta);
-
-                const btn = document.createElement('button');
-                btn.className = 'module-dl-btn';
-                btn.innerHTML = `${DOWNLOAD_ICON}<span>Скачати</span>`;
-                btn.onclick = (e) => {
-                    e.stopPropagation();
-                    downloadModuleFromCatalog(mod, row, btn);
-                };
-
-                row.appendChild(info);
-                row.appendChild(btn);
-                availableModulesList.appendChild(row);
+                const lang = mod.language || '?';
+                if (!groups.has(lang)) groups.set(lang, []);
+                groups.get(lang).push(mod);
             });
+            const sortedLangs = [...groups.keys()].sort((a, b) => {
+                const ia = langOrder.indexOf(a), ib = langOrder.indexOf(b);
+                return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
+            });
+
+            sortedLangs.forEach(lang => {
+                const langLabel = document.createElement('div');
+                langLabel.className = 'modules-lang-label';
+                langLabel.textContent = languageName(lang);
+                availableModulesList.appendChild(langLabel);
+
+                groups.get(lang)
+                    .slice()
+                    .sort((a, b) => (a.localName || a.name).localeCompare(b.localName || b.name))
+                    .forEach(mod => availableModulesList.appendChild(createAvailableModuleRow(mod)));
+            });
+        }
+
+        function createAvailableModuleRow(mod) {
+            const row = document.createElement('div');
+            row.className = 'module-item module-item--available';
+
+            const info = document.createElement('div');
+            info.className = 'module-info';
+
+            const name = document.createElement('div');
+            name.className = 'module-name';
+            name.textContent = mod.localName || mod.name;
+            name.title = mod.localName || mod.name;
+
+            const meta = document.createElement('div');
+            meta.className = 'module-meta';
+            meta.textContent = `${(mod.sizeBytes / 1024 / 1024).toFixed(1)} MB`;
+
+            info.appendChild(name);
+            info.appendChild(meta);
+
+            const btn = document.createElement('button');
+            btn.className = 'module-dl-btn';
+            btn.innerHTML = `${DOWNLOAD_ICON}<span>${t('download')}</span>`;
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                downloadModuleFromCatalog(mod, row, btn);
+            };
+
+            row.appendChild(info);
+            row.appendChild(btn);
+            return row;
         }
 
         async function downloadModuleFromCatalog(mod, row, btn) {
             btn.disabled = true;
             row.classList.add('module-item--loading');
-            btn.innerHTML = '<span class="module-spinner"></span><span>Скачується…</span>';
+            btn.innerHTML = `<span class="module-spinner"></span><span>${t('downloading')}</span>`;
             const result = await window.electronAPI.downloadModule(mod.id);
             if (result.success) {
                 await refreshTranslationLists();
@@ -559,8 +775,8 @@
             } else {
                 btn.disabled = false;
                 row.classList.remove('module-item--loading');
-                btn.innerHTML = `${DOWNLOAD_ICON}<span>Скачати</span>`;
-                alert(`Не вдалося завантажити модуль: ${result.message}`);
+                btn.innerHTML = `${DOWNLOAD_ICON}<span>${t('download')}</span>`;
+                alert(t('downloadModuleError', { msg: result.message }));
             }
         }
 
@@ -827,13 +1043,13 @@
 
         async function doTextSearch(query) {
             const myId = ++textSearchId;
-            suggestionsBox.innerHTML = '<div class="suggestion-item suggestion-loading">Пошук…</div>';
+            suggestionsBox.innerHTML = `<div class="suggestion-item suggestion-loading">${t('searching')}</div>`;
             suggestionsBox.style.display = 'block';
             try {
                 const results = await window.electronAPI.searchVerses({ query });
                 if (myId !== textSearchId) return;
                 if (results.length === 0) {
-                    suggestionsBox.innerHTML = '<div class="suggestion-item">Нічого не знайдено</div>';
+                    suggestionsBox.innerHTML = `<div class="suggestion-item">${t('nothingFound')}</div>`;
                     return;
                 }
                 showVerseSearchResults(results, query);
@@ -1015,7 +1231,7 @@
                         handleBookClick(book); // Переходимо до вибору розділу
                         hideSearchOverlay();
                     } else {
-                        alert(`Книгу "${parts[0]}" не знайдено.`);
+                        alert(t('bookNotFoundAlert', { book: parts[0] }));
                     }
                 } else { // Сценарій 2: Введено повне посилання (книга, розділ, вірш)
                     await parseAndShowVerse(query);
@@ -1222,6 +1438,7 @@
         // --- Керування інтерфейсом ---
 
         function updateView(viewName) {
+            currentViewName = viewName;
             // Скидаємо набране число при зміні виду
             clearGridNav();
             // Ховаємо всі контейнери
@@ -1232,17 +1449,17 @@
 
             if (viewName === 'books') {
                 booksContainer.style.display = 'grid';
-                currentSelectionHeader.innerHTML = '<span class="nav-instruction">Оберіть книгу</span>';
+                currentSelectionHeader.innerHTML = `<span class="nav-instruction">${t('chooseBook')}</span>`;
                 selectedBook = null;
                 selectedChapter = null;
             } else if (viewName === 'chapters') {
                 chaptersContainer.style.display = 'grid';
                 backBtn.style.display = 'inline-flex';
-                currentSelectionHeader.innerHTML = `<span class="nav-book-name">${selectedBook.long_name}</span><span class="nav-instruction"> — Оберіть розділ</span>`;
+                currentSelectionHeader.innerHTML = `<span class="nav-book-name">${selectedBook.long_name}</span><span class="nav-instruction"> — ${t('chooseChapter')}</span>`;
             } else if (viewName === 'verses') {
                 versesContainer.style.display = 'flex';
                 backBtn.style.display = 'inline-flex';
-                currentSelectionHeader.innerHTML = `<span class="nav-book-name">${selectedBook.long_name} ${selectedChapter}</span><span class="nav-instruction"> — Оберіть вірш</span>`;
+                currentSelectionHeader.innerHTML = `<span class="nav-book-name">${selectedBook.long_name} ${selectedChapter}</span><span class="nav-instruction"> — ${t('chooseVerse')}</span>`;
             }
         }
 
@@ -1262,7 +1479,7 @@
             const newDbName = event.target.value;
             const result = await window.electronAPI.switchTranslation(newDbName);
             if (!result.success) {
-                alert(`Не вдалося переключити переклад: ${result.message}`);
+                alert(t('switchTranslationError', { msg: result.message }));
                 return;
             }
 
@@ -1413,7 +1630,7 @@
         // Ручна перевірка оновлень із налаштувань
         checkUpdatesBtn.addEventListener('click', async () => {
             checkUpdatesBtn.disabled = true;
-            updateStatusText.textContent = 'Перевіряємо наявність оновлень…';
+            updateStatusText.textContent = t('checkingUpdates');
             const result = await window.electronAPI.checkForUpdates();
             if (!result.ok) {
                 updateStatusText.textContent = result.message;
@@ -1423,33 +1640,33 @@
         });
 
         window.electronAPI.onUpdateAvailable((version) => {
-            updateMessage.textContent = 'Знайдено оновлення! Завантажується...';
+            updateMessage.textContent = t('updateFoundBanner');
             updateNotification.style.display = 'block';
             updateStatusText.textContent = version
-                ? `Знайдено нову версію ${version}. Завантажується…`
-                : 'Знайдено оновлення. Завантажується…';
+                ? t('updateFoundVersion', { v: version })
+                : t('updateFound');
         });
 
         window.electronAPI.onUpdateNotAvailable(() => {
-            updateStatusText.textContent = 'У вас найновіша версія.';
+            updateStatusText.textContent = t('latestVersion');
             checkUpdatesBtn.disabled = false;
         });
 
         window.electronAPI.onUpdateDownloadProgress((percent) => {
-            updateStatusText.textContent = `Завантаження оновлення: ${percent}%`;
+            updateStatusText.textContent = t('updateProgress', { p: percent });
         });
 
         window.electronAPI.onUpdateDownloaded(() => {
-            updateMessage.textContent = 'Оновлення завантажено. Перезапустіть програму, щоб встановити.';
+            updateMessage.textContent = t('updateDownloadedBanner');
             restartAppBtn.style.display = 'inline-block';
             updateNotification.style.display = 'block';
-            updateStatusText.textContent = 'Оновлення завантажено та готове до встановлення.';
+            updateStatusText.textContent = t('updateReady');
             installUpdateBtn.style.display = 'inline-block';
             checkUpdatesBtn.style.display = 'none';
         });
 
         window.electronAPI.onUpdateError((message) => {
-            updateStatusText.textContent = `Помилка оновлення: ${message}`;
+            updateStatusText.textContent = t('updateError', { msg: message });
             checkUpdatesBtn.disabled = false;
         });
 
