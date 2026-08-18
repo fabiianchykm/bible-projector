@@ -121,6 +121,21 @@ const MYBIBLE_BOOK_NUMBERS = [
   660, 670, 680, 690, 700, 710, 720, 730
 ];
 
+// Відповідність модулів каталогу вбудованим перекладам, які вже їдуть з
+// програмою — щоб той самий переклад не показувався як «можна скачати»
+const BUNDLED_EQUIVALENTS = {
+  'ukr-cuv23': "CUV'23.SQLite3",
+  'ukr-filaret': 'FIL.SQLite3',
+  'ukr-homenko': 'HOM.SQLite3',
+  'rus-rstb': 'RSTB.SQLite3',
+  'ukr-turkonyak': 'TUR.SQLite3',
+  'ukr-ubd96': 'UBD96.SQLite3',
+  'ukr-ubio62': "UBIO'62.SQLite3",
+  'ukr-ubio88': "UBIO'88.SQLite3",
+  'ukr-kulish': 'UKRK.SQLite3',
+  'ukr-msc22': "МСЦ'22.SQLite3"
+};
+
 // Ім'я файлу, під яким модуль з каталогу зберігається у папці перекладів
 // (назва файлу без розширення показується користувачу у списку перекладів)
 function moduleFileName(mod) {
@@ -197,15 +212,19 @@ function convertModuleToMyBible(sourcePath, targetPath) {
 ipcMain.handle('get-modules-catalog', async () => {
   const modules = await fetchModulesCatalog();
   const installed = new Set(getAllTranslations().map(f => f.toLowerCase()));
-  return modules.map(m => ({
-    id: m.id,
-    name: m.name,
-    localName: m.localName,
-    language: m.language,
-    sizeBytes: m.sizeBytes,
-    fileName: moduleFileName(m),
-    installed: installed.has(moduleFileName(m).toLowerCase())
-  }));
+  return modules.map(m => {
+    const bundledName = BUNDLED_EQUIVALENTS[m.id];
+    return {
+      id: m.id,
+      name: m.name,
+      localName: m.localName,
+      language: m.language,
+      sizeBytes: m.sizeBytes,
+      fileName: moduleFileName(m),
+      installed: installed.has(moduleFileName(m).toLowerCase())
+        || (bundledName !== undefined && installed.has(bundledName.toLowerCase()))
+    };
+  });
 });
 
 // Завантажує модуль з каталогу, перевіряє суму та конвертує у папку перекладів

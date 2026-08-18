@@ -10,21 +10,19 @@
     <div class="container">
         <div class="top-bar">
             <div class="translation-selector">
-                <label for="translationSelect">Переклад</label>
-                <div class="select-wrapper">
-                    <select id="translationSelect"></select>
-                </div>
-                <button id="modulesBtn" class="modules-btn" title="Модулі перекладів">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
+                <label for="translationPickerBtn">Переклад</label>
+                <select id="translationSelect" style="display: none;"></select>
+                <button id="translationPickerBtn" class="translation-picker" title="Обрати або скачати переклад">
+                    <span id="translationPickerLabel">—</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"/>
                     </svg>
                 </button>
                 <div id="modulesPanel" class="modules-panel" style="display: none;">
-                    <div class="modules-group-label">Скачані</div>
+                    <div class="modules-group-label" id="installedModulesLabel">Скачані</div>
                     <div id="installedModulesList"></div>
-                    <div class="modules-group-label">Доступні для скачування</div>
+                    <div class="modules-group-divider"></div>
+                    <div class="modules-group-label" id="availableModulesLabel">Можна скачати</div>
                     <div id="availableModulesList">
                         <div class="modules-status">Завантаження списку…</div>
                     </div>
@@ -388,8 +386,9 @@
             }
         }
 
-        // --- Панель модулів перекладів (іконка біля вибору перекладу) ---
-        const modulesBtn = document.getElementById('modulesBtn');
+        // --- Панель модулів перекладів (кнопка вибору перекладу) ---
+        const translationPickerBtn = document.getElementById('translationPickerBtn');
+        const translationPickerLabel = document.getElementById('translationPickerLabel');
         const modulesPanel = document.getElementById('modulesPanel');
         const installedModulesList = document.getElementById('installedModulesList');
         const availableModulesList = document.getElementById('availableModulesList');
@@ -411,10 +410,16 @@
             modulesPanel.style.display = 'none';
         }
 
-        modulesBtn.addEventListener('click', (e) => {
+        translationPickerBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (isModulesPanelOpen()) closeModulesPanel(); else openModulesPanel();
         });
+
+        // Показує назву поточного перекладу на кнопці
+        function updateTranslationPickerLabel() {
+            const option = translationSelect.selectedOptions[0];
+            translationPickerLabel.textContent = option ? option.textContent : '—';
+        }
 
         // Закриваємо панель при кліку поза нею
         document.addEventListener('click', (e) => {
@@ -423,15 +428,28 @@
             }
         });
 
+        const installedModulesLabel = document.getElementById('installedModulesLabel');
+        const availableModulesLabel = document.getElementById('availableModulesLabel');
+        let availableModulesCache = []; // Модулі каталогу, яких ще нема локально
+
+        const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+        const DOWNLOAD_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+
         // Скачані переклади: клік перемикає активний переклад
         function renderInstalledModules() {
             installedModulesList.innerHTML = '';
-            [...translationSelect.options].forEach(option => {
+            const options = [...translationSelect.options];
+            installedModulesLabel.textContent = `Скачані · ${options.length}`;
+            options.forEach(option => {
+                const isCurrent = option.value === translationSelect.value;
+
                 const row = document.createElement('div');
                 row.className = 'module-item module-item--installed';
-                if (option.value === translationSelect.value) {
-                    row.classList.add('module-item--current');
-                }
+                if (isCurrent) row.classList.add('module-item--current');
+
+                const check = document.createElement('span');
+                check.className = 'module-check';
+                check.innerHTML = CHECK_ICON;
 
                 const info = document.createElement('div');
                 info.className = 'module-info';
@@ -439,19 +457,23 @@
                 name.className = 'module-name';
                 name.textContent = option.textContent;
                 info.appendChild(name);
+                if (isCurrent) {
+                    const meta = document.createElement('div');
+                    meta.className = 'module-meta module-meta--current';
+                    meta.textContent = 'зараз показується';
+                    info.appendChild(meta);
+                }
 
-                const check = document.createElement('span');
-                check.className = 'module-check';
-                check.textContent = '✓';
-
-                row.appendChild(info);
                 row.appendChild(check);
+                row.appendChild(info);
+                row.title = isCurrent ? 'Поточний переклад' : 'Натисніть, щоб переключитись';
                 row.onclick = () => {
                     if (translationSelect.value !== option.value) {
                         translationSelect.value = option.value;
                         translationSelect.dispatchEvent(new Event('change', { bubbles: true }));
                     }
-                    renderInstalledModules();
+                    updateTranslationPickerLabel();
+                    closeModulesPanel();
                 };
                 installedModulesList.appendChild(row);
             });
@@ -463,24 +485,27 @@
             modulesCatalogLoading = true;
             try {
                 const modules = await window.electronAPI.getModulesCatalog();
-                renderAvailableModules(modules.filter(m => !m.installed));
+                availableModulesCache = modules.filter(m => !m.installed);
+                renderAvailableModules();
             } catch (err) {
                 console.error('Не вдалося завантажити каталог модулів:', err);
+                availableModulesLabel.textContent = 'Можна скачати';
                 availableModulesList.innerHTML = '<div class="modules-status">Не вдалося завантажити список. Перевірте інтернет.</div>';
             } finally {
                 modulesCatalogLoading = false;
             }
         }
 
-        function renderAvailableModules(modules) {
+        function renderAvailableModules() {
             availableModulesList.innerHTML = '';
-            if (modules.length === 0) {
-                availableModulesList.innerHTML = '<div class="modules-status">Усі модулі з каталогу вже скачані.</div>';
+            availableModulesLabel.textContent = `Можна скачати · ${availableModulesCache.length}`;
+            if (availableModulesCache.length === 0) {
+                availableModulesList.innerHTML = '<div class="modules-status">Усі модулі з каталогу вже скачані ✓</div>';
                 return;
             }
-            modules.forEach(mod => {
+            availableModulesCache.forEach(mod => {
                 const row = document.createElement('div');
-                row.className = 'module-item';
+                row.className = 'module-item module-item--available';
 
                 const info = document.createElement('div');
                 info.className = 'module-info';
@@ -500,8 +525,7 @@
 
                 const btn = document.createElement('button');
                 btn.className = 'module-dl-btn';
-                btn.title = 'Скачати';
-                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+                btn.innerHTML = `${DOWNLOAD_ICON}<span>Скачати</span>`;
                 btn.onclick = (e) => {
                     e.stopPropagation();
                     downloadModuleFromCatalog(mod, row, btn);
@@ -516,19 +540,17 @@
         async function downloadModuleFromCatalog(mod, row, btn) {
             btn.disabled = true;
             row.classList.add('module-item--loading');
-            btn.innerHTML = '<span class="module-spinner"></span>';
+            btn.innerHTML = '<span class="module-spinner"></span><span>Скачується…</span>';
             const result = await window.electronAPI.downloadModule(mod.id);
             if (result.success) {
                 await refreshTranslationLists();
-                row.remove();
+                availableModulesCache = availableModulesCache.filter(m => m.id !== mod.id);
                 renderInstalledModules();
-                if (!availableModulesList.querySelector('.module-item')) {
-                    availableModulesList.innerHTML = '<div class="modules-status">Усі модулі з каталогу вже скачані.</div>';
-                }
+                renderAvailableModules();
             } else {
                 btn.disabled = false;
                 row.classList.remove('module-item--loading');
-                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+                btn.innerHTML = `${DOWNLOAD_ICON}<span>Скачати</span>`;
                 alert(`Не вдалося завантажити модуль: ${result.message}`);
             }
         }
@@ -549,6 +571,7 @@
             });
             if (primary) translationSelect.value = primary;
             if (secondary) secondaryTranslationSelect.value = secondary;
+            updateTranslationPickerLabel();
         }
 
         function setupCategoryColorPickers() {
@@ -587,6 +610,8 @@
                 if (secondaryTranslation) {
                     secondaryTranslationSelect.value = secondaryTranslation;
                 }
+
+                updateTranslationPickerLabel();
 
                 // Якщо є переклади, спробуємо завантажити книги
                 if (translations.length > 0) {
