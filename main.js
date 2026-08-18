@@ -611,6 +611,11 @@ ipcMain.handle('check-for-updates', async () => {
 
 ipcMain.handle('get-app-version', () => app.getVersion());
 
+// Кнопка «Подяка» — відкриває сторінку підтримки у браузері
+ipcMain.on('open-donate', () => {
+  shell.openExternal('https://send.monobank.ua/8zgF4XAwFY');
+});
+
 ipcMain.on('restart-app-to-update', () => {
   autoUpdater.quitAndInstall();
 });

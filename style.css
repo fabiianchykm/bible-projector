@@ -757,6 +757,42 @@ details[open] > summary.settings-section-label::after {
     word-break: break-all;
 }
 
+/* Кнопка «Подяка» внизу головного екрана */
+.app-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 18px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.donate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    color: var(--text-color);
+    opacity: 0.6;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.donate-btn:hover {
+    background: transparent;
+    opacity: 1;
+    border-color: #e0245e;
+    color: #e0245e;
+}
+
+.donate-btn svg {
+    flex-shrink: 0;
+}
+
 /* Коротке сповіщення внизу екрана */
 .app-toast {
     position: fixed;

@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getRemoteInfo: () => ipcRenderer.invoke('get-remote-info'),
   setRemoteEnabled: (enabled) => ipcRenderer.invoke('set-remote-enabled', enabled),
   onRemoteProposal: (callback) => ipcRenderer.on('remote-proposal', (event, proposal) => callback(proposal)),
+  openDonate: () => ipcRenderer.send('open-donate'),
   // API для оновлень
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
