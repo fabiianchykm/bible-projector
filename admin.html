@@ -277,6 +277,8 @@
                 noSavedPlaces: 'Поки нічого не збережено. Покажіть вірш на проекторі та натисніть «Додати».',
                 nothingShown: 'Спочатку покажіть вірш на проекторі.',
                 deletePlace: 'Видалити',
+                addedToPlaces: 'Додано в закладки: {ref}',
+                alreadyInPlaces: 'Вже в закладках: {ref}',
                 chooseBook: 'Оберіть книгу',
                 chooseChapter: 'Оберіть розділ',
                 chooseVerse: 'Оберіть вірш',
@@ -343,6 +345,8 @@
                 noSavedPlaces: 'Nothing saved yet. Show a verse on the projector and press "Add".',
                 nothingShown: 'Show a verse on the projector first.',
                 deletePlace: 'Delete',
+                addedToPlaces: 'Added to bookmarks: {ref}',
+                alreadyInPlaces: 'Already bookmarked: {ref}',
                 chooseBook: 'Choose a book',
                 chooseChapter: 'Choose a chapter',
                 chooseVerse: 'Choose a verse',
@@ -836,6 +840,22 @@
             return savedPlacesPanel.style.display !== 'none';
         }
 
+        // Коротке сповіщення внизу екрана
+        let toastTimeout = null;
+        function showToast(message) {
+            let toast = document.getElementById('appToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'appToast';
+                toast.className = 'app-toast';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = message;
+            toast.classList.add('visible');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => toast.classList.remove('visible'), 1800);
+        }
+
         savedPlacesBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (isSavedPlacesOpen()) {
@@ -865,15 +885,17 @@
             }
             savedPlaces.forEach((place, index) => {
                 const row = document.createElement('div');
-                row.className = 'module-item module-item--installed saved-place-item';
-                if (index === lastOpenedPlaceIndex) row.classList.add('module-item--current');
+                row.className = 'saved-place-item';
+                if (index === lastOpenedPlaceIndex) row.classList.add('active');
 
-                const info = document.createElement('div');
-                info.className = 'module-info';
-                const name = document.createElement('div');
-                name.className = 'module-name';
-                name.textContent = place.label;
-                info.appendChild(name);
+                const num = document.createElement('span');
+                num.className = 'saved-place-num';
+                num.textContent = (index + 1) + '.';
+
+                const label = document.createElement('span');
+                label.className = 'saved-place-label';
+                label.textContent = place.label;
+                label.title = place.label;
 
                 const delBtn = document.createElement('button');
                 delBtn.className = 'saved-place-del';
@@ -888,11 +910,30 @@
                     renderSavedPlaces();
                 };
 
-                row.appendChild(info);
+                row.appendChild(num);
+                row.appendChild(label);
                 row.appendChild(delBtn);
                 row.onclick = () => openSavedPlace(place, index);
                 savedPlacesList.appendChild(row);
             });
+        }
+
+        // Додає місце в закладки; повертає true, якщо його там ще не було
+        function addSavedPlace(bookId, chapter, versesStr, shortName) {
+            const item = {
+                bookId,
+                chapter,
+                versesStr: String(versesStr),
+                label: `${shortName} ${chapter}:${versesStr}`
+            };
+            const exists = savedPlaces.some(p =>
+                p.bookId == item.bookId && p.chapter == item.chapter && p.versesStr === item.versesStr);
+            if (!exists) {
+                savedPlaces.push(item);
+                persistSavedPlaces();
+                if (isSavedPlacesOpen()) renderSavedPlaces();
+            }
+            return { added: !exists, label: item.label };
         }
 
         addCurrentPlaceBtn.addEventListener('click', () => {
@@ -900,18 +941,7 @@
                 alert(t('nothingShown'));
                 return;
             }
-            const item = {
-                bookId: selectedBook.id,
-                chapter: selectedChapter,
-                versesStr: String(lastShownVerse),
-                label: `${selectedBook.short_name} ${selectedChapter}:${lastShownVerse}`
-            };
-            const exists = savedPlaces.some(p =>
-                p.bookId == item.bookId && p.chapter == item.chapter && p.versesStr === item.versesStr);
-            if (!exists) {
-                savedPlaces.push(item);
-                persistSavedPlaces();
-            }
+            addSavedPlace(selectedBook.id, selectedChapter, lastShownVerse, selectedBook.short_name);
             renderSavedPlaces();
         });
 
@@ -1099,6 +1129,12 @@
                     verseItem.appendChild(closeVerseBtn);
 
                     verseItem.onclick = (event) => handleVerseClick(event, verse.verse);
+                    // Правий клік — додати вірш у закладки
+                    verseItem.oncontextmenu = (event) => {
+                        event.preventDefault();
+                        const result = addSavedPlace(selectedBook.id, selectedChapter, verse.verse, selectedBook.short_name);
+                        showToast(t(result.added ? 'addedToPlaces' : 'alreadyInPlaces', { ref: result.label }));
+                    };
                     versesContainer.appendChild(verseItem);
                 });
                 updateView('verses');
