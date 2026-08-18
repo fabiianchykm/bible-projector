@@ -30,7 +30,10 @@
       "icon": "icon.png"
     },
     "mac": {
-      "target": "dmg",
+      "target": [
+        "zip",
+        "dmg"
+      ],
       "icon": "icon.png",
       "hardenedRuntime": true,
       "gatekeeperAssess": false
