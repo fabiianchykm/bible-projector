@@ -59,11 +59,11 @@ body {
 }
 
 .container {
-    max-width: 700px;
-    margin: 10px auto;
-    padding: 20px;
+    max-width: 740px;
+    margin: 16px auto;
+    padding: 18px 22px 24px;
     background: var(--container-bg);
-    border-radius: 14px;
+    border-radius: 16px;
     border: 1px solid var(--container-border);
     box-shadow:
         0 1px 2px rgba(0,0,0,0.04),
@@ -215,13 +215,6 @@ button:hover {
     color: var(--primary-color);
 }
 
-hr {
-    border: 0;
-    height: 1px;
-    background: var(--border-color);
-    margin: 20px 0;
-}
-
 .button-group {
     display: flex;
     gap: 10px;
@@ -249,57 +242,26 @@ hr {
     color: white;
 }
 
-/* --- Стилі для легенди категорій --- */
-.category-legend {
-    margin-top: 20px;
-    padding: 15px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background-color: var(--container-bg);
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 10px;
-}
-
-.category-legend h3 {
-    grid-column: 1 / -1; /* Розтягнути на всі колонки */
-    margin-top: 0;
-    margin-bottom: 10px;
-    color: var(--primary-color);
-    font-size: 1rem;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    font-size: 0.9rem;
-    color: var(--text-color);
-}
-
-.legend-color {
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    border-radius: 4px;
-    margin-right: 8px;
-    border: 1px solid rgba(0,0,0,0.1); /* Легка рамка для світлих кольорів */
-}
-
 .update-notification {
-    background-color: #28a745;
+    background-color: #16a34a;
     color: white;
-    padding: 10px 15px;
-    border-radius: 5px;
-    margin-bottom: 15px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 14px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
+    font-size: 13px;
 }
 
 .update-notification button {
     background-color: #fff;
-    color: #28a745;
-    font-weight: bold;
+    color: #15803d;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 7px;
 }
 
 .search-overlay {
@@ -1126,7 +1088,7 @@ details[open] > summary.settings-section-label::after {
 }
 
 .selection-container {
-    margin-top: 16px;
+    margin-top: 12px;
 }
 
 .navigation-header {
@@ -1134,16 +1096,19 @@ details[open] > summary.settings-section-label::after {
     align-items: center;
     gap: 10px;
     margin-top: 0;
-    padding: 10px 0 10px;
-    border-bottom: 1px solid var(--border-color);
+    padding: 8px 0;
+    min-height: 44px;
 }
 
 .navigation-header h2 {
-    font-size: 0.95rem;
+    font-size: 1.02rem;
     font-weight: 600;
     letter-spacing: 0.01em;
     color: var(--text-color);
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .nav-book-name {
@@ -1183,7 +1148,7 @@ details[open] > summary.settings-section-label::after {
     /* Адаптивна сітка з "кубиками" */
     /* Сітка з 6 колонок */
     grid-template-columns: repeat(6, 1fr);
-    gap: 5px;
+    gap: 7px;
 }
 
 .grid-item {
@@ -1195,21 +1160,24 @@ details[open] > summary.settings-section-label::after {
     align-items: center;
     gap: 2px;
     padding: 2px;
-    font-size: 12px;
+    font-size: 12.5px;
+    font-weight: 500;
     text-align: center;
     cursor: pointer;
-    border: 1px solid var(--input-border-color);
-    border-radius: 6px;
+    border: 1px solid transparent;
+    border-radius: 10px;
     background-color: var(--book-item-bg);
-    transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
+    box-shadow: inset 0 0 0 1px var(--container-border);
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s,
+                transform 0.12s, box-shadow 0.15s;
     user-select: none; /* Забороняємо виділення тексту */
 }
 
 .book-full-name {
     display: none;
-    font-size: 8px;
-    opacity: 0.6;
-    line-height: 1.2;
+    font-size: 8.5px;
+    opacity: 0.62;
+    line-height: 1.25;
     word-break: break-word;
     overflow: hidden;
     max-height: 2.6em;
@@ -1217,8 +1185,8 @@ details[open] > summary.settings-section-label::after {
 
 #booksContainer.show-full-names .grid-item {
     aspect-ratio: unset;
-    min-height: 48px;
-    padding: 4px 3px;
+    min-height: 52px;
+    padding: 5px 4px;
     justify-content: center;
 }
 
@@ -1227,8 +1195,9 @@ details[open] > summary.settings-section-label::after {
 }
 
 .grid-item:hover {
-    background-color: var(--book-item-hover-bg);
     border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.10);
 }
 
 .grid-item:active {
@@ -1237,6 +1206,7 @@ details[open] > summary.settings-section-label::after {
     background-color: var(--book-item-active-bg);
     color: white;
     border-color: var(--book-item-active-border);
+    box-shadow: none;
 }
 
 .grid-item.selected {
@@ -1323,20 +1293,22 @@ details[open] > summary.settings-section-label::after {
 
 .verse-text-item {
     position: relative; /* Для позиціонування хрестика */
-    padding: 10px 12px;
+    padding: 11px 14px;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: pointer;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
     display: flex;
     gap: 10px;
     align-items: baseline;
     font-size: 14px;
+    line-height: 1.55;
 }
 
 .verse-text-item:hover {
     background-color: var(--book-item-hover-bg);
     border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
 }
 
 .verse-text-item .verse-number {
@@ -1413,21 +1385,3 @@ details[open] > summary.settings-section-label::after {
     padding: 0 1px;
 }
 
-.input-area {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.input-area input {
-    padding: 10px;
-    font-size: 16px;
-    border: 1px solid var(--input-border-color);
-    border-radius: 5px;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-}
-
-.input-area input#selectedBook { flex-basis: 120px; background-color: var(--input-readonly-bg); font-weight: bold; text-align: center; }
-.input-area input#chapterInput { flex-basis: 100px; }
-.input-area input#verseInput { flex-grow: 1; }
