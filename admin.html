@@ -10,12 +10,40 @@
     <div class="container">
         <div class="top-bar">
             <div class="translation-selector">
-                <label for="translationSelect">Переклад:</label>
-                <select id="translationSelect"></select>
+                <label for="translationSelect">Переклад</label>
+                <div class="select-wrapper">
+                    <select id="translationSelect"></select>
+                </div>
+                <button id="modulesBtn" class="modules-btn" title="Модулі перекладів">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                </button>
+                <div id="modulesPanel" class="modules-panel" style="display: none;">
+                    <div class="modules-group-label">Скачані</div>
+                    <div id="installedModulesList"></div>
+                    <div class="modules-group-label">Доступні для скачування</div>
+                    <div id="availableModulesList">
+                        <div class="modules-status">Завантаження списку…</div>
+                    </div>
+                </div>
             </div>
-            <div class="verse-controls">
-                <button id="openProjectorBtn">Відкрити вікно проектора</button>
-                <button id="settingsBtn" title="Налаштування">⚙️</button>
+            <div class="top-bar-actions">
+                <button id="openProjectorBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/>
+                        <polyline points="8,21 12,17 16,21"/>
+                    </svg>
+                    Відкрити
+                </button>
+                <button id="settingsBtn" title="Налаштування">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </button>
             </div>
         </div>
 
@@ -25,8 +53,12 @@
         </div>
 
         <div class="navigation-header">
-            <button id="backBtn" style="display: none;">&larr; Назад</button>
+            <button id="backBtn" style="display: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Назад
+            </button>
             <h2 id="currentSelectionHeader">Оберіть книгу</h2>
+            <span id="gridNavBadge" class="grid-nav-badge" style="display: none;"></span>
         </div>
 
         <!-- Контейнер для навігації -->
@@ -55,58 +87,104 @@
     <!-- Оверлей налаштувань -->
     <div id="settingsOverlay" class="settings-overlay" style="display: none;">
         <div class="settings-panel">
-            <h2>Налаштування</h2>
-            <h3>Кольори проектора</h3>
-            <div class="setting-item">
-                <label for="projectorBgColor">Колір фону:</label>
-                <input type="color" id="projectorBgColor" value="#000000">
+
+            <div class="settings-header">
+                <span class="settings-title">Налаштування</span>
+                <button id="closeSettingsBtn" class="settings-close-btn" title="Закрити">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
             </div>
-            <div class="setting-item">
-                <label>Фонове зображення:</label>
-                <div class="button-group">
-                    <button id="selectBgImageBtn">Обрати</button>
-                    <button id="removeBgImageBtn">Скинути</button>
+
+            <div class="settings-body">
+
+                <div class="settings-section">
+                    <div class="settings-section-label">Проектор</div>
+
+                    <div class="setting-row">
+                        <span>Колір фону</span>
+                        <div class="color-swatch-wrap">
+                            <input type="color" id="projectorBgColor" value="#000000">
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <span>Фонове зображення</span>
+                        <div class="button-group">
+                            <button id="selectBgImageBtn" class="btn-sm">Обрати</button>
+                            <button id="removeBgImageBtn" class="btn-sm btn-sm-ghost">Скинути</button>
+                        </div>
+                    </div>
+                    <div id="bgImageName" class="setting-info-text"></div>
                 </div>
-            </div>
-            <div id="bgImageName" class="setting-info-text"></div>
 
-            <hr class="settings-divider">
-            <h3>Кольори категорій книг</h3>
-            <div class="setting-item">
-                <label for="color-pentateuch">П'ятикнижжя:</label>
-                <input type="color" id="color-pentateuch">
-            </div>
-            <div class="setting-item">
-                <label for="color-historical">Історичні:</label>
-                <input type="color" id="color-historical">
-            </div>
-            <div class="setting-item">
-                <label for="color-poetic">Поетичні:</label>
-                <input type="color" id="color-poetic">
-            </div>
-            <div class="setting-item">
-                <label for="color-prophetic">Пророчі:</label>
-                <input type="color" id="color-prophetic">
-            </div>
-            <div class="setting-item">
-                <label for="color-gospels">Євангелії:</label>
-                <input type="color" id="color-gospels">
-            </div>
-            <div class="setting-item">
-                <label for="color-acts">Дії Апостолів:</label>
-                <input type="color" id="color-acts">
-            </div>
-            <div class="setting-item">
-                <label for="color-epistles">Послання:</label>
-                <input type="color" id="color-epistles">
-            </div>
-            <div class="setting-item">
-                <label for="color-revelation">Об'явлення:</label>
-                <input type="color" id="color-revelation">
-            </div>
+                <div class="settings-section">
+                    <div class="settings-section-label">Паралельний переклад</div>
+                    <div class="setting-row">
+                        <span>Два переклади одночасно</span>
+                        <label class="toggle">
+                            <input type="checkbox" id="parallelModeToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row" id="secondaryTranslationRow" style="display: none;">
+                        <span>Другий переклад</span>
+                        <div class="select-wrapper">
+                            <select id="secondaryTranslationSelect"></select>
+                        </div>
+                    </div>
+                    <div class="setting-info-text">Один переклад показується зверху, другий — знизу.</div>
+                </div>
 
-            <!-- Майбутні налаштування можна додавати сюди -->
-            <button id="closeSettingsBtn">Закрити</button>
+                <div class="settings-section">
+                    <div class="settings-section-label">Кольори категорій</div>
+                    <div class="category-color-grid">
+                        <div class="color-chip"><input type="color" id="color-pentateuch"><span>П'ятикнижжя</span></div>
+                        <div class="color-chip"><input type="color" id="color-gospels"><span>Євангелії</span></div>
+                        <div class="color-chip"><input type="color" id="color-historical"><span>Історичні</span></div>
+                        <div class="color-chip"><input type="color" id="color-acts"><span>Дії Апостолів</span></div>
+                        <div class="color-chip"><input type="color" id="color-poetic"><span>Поетичні</span></div>
+                        <div class="color-chip"><input type="color" id="color-epistles"><span>Послання</span></div>
+                        <div class="color-chip"><input type="color" id="color-prophetic"><span>Пророчі</span></div>
+                        <div class="color-chip"><input type="color" id="color-revelation"><span>Об'явлення</span></div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-section-label">Інтерфейс</div>
+                    <div class="setting-row">
+                        <span>Повна назва над скороченням</span>
+                        <label class="toggle">
+                            <input type="checkbox" id="showFullBookNameToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <span>Тема</span>
+                        <div class="select-wrapper">
+                            <select id="themeSelect">
+                                <option value="system">Як у системі</option>
+                                <option value="light">Світла</option>
+                                <option value="dark">Темна</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section settings-section--last">
+                    <div class="settings-section-label">Оновлення</div>
+                    <div class="setting-row">
+                        <span>Версія: <span id="appVersion">—</span></span>
+                        <div class="button-group">
+                            <button id="checkUpdatesBtn" class="btn-sm">Перевірити оновлення</button>
+                            <button id="installUpdateBtn" class="btn-sm" style="display: none;">Перезапустити й оновити</button>
+                        </div>
+                    </div>
+                    <div id="updateStatusText" class="setting-info-text"></div>
+                </div>
+
+            </div>
         </div>
     </div>
 
@@ -118,6 +196,7 @@
         const versesContainer = document.getElementById('versesContainer');
         const backBtn = document.getElementById('backBtn');
         const currentSelectionHeader = document.getElementById('currentSelectionHeader');
+        const gridNavBadge = document.getElementById('gridNavBadge');
         const searchOverlay = document.getElementById('searchOverlay');
         const smartSearchInput = document.getElementById('smartSearchInput');
         const suggestionsBox = document.getElementById('suggestionsBox');
@@ -128,6 +207,10 @@
         const selectBgImageBtn = document.getElementById('selectBgImageBtn');
         const removeBgImageBtn = document.getElementById('removeBgImageBtn');
         const bgImageName = document.getElementById('bgImageName');
+        const parallelModeToggle = document.getElementById('parallelModeToggle');
+        const themeSelect = document.getElementById('themeSelect');
+        const secondaryTranslationRow = document.getElementById('secondaryTranslationRow');
+        const secondaryTranslationSelect = document.getElementById('secondaryTranslationSelect');
 
         // --- Стан програми ---
         let selectedBook = null;
@@ -136,6 +219,11 @@
         let firstSelectedVerse = null; // Для вибору діапазону
         let activeSuggestionIndex = -1;
         let userTypedQuery = ''; // Зберігаємо те, що ввів користувач
+        let gridNavBuffer = '';   // Набрані цифри для навігації по сітці
+        let gridNavTimeout = null; // Таймер скидання набраного числа
+        let parallelMode = false;          // Чи показувати два переклади одночасно
+        let secondaryTranslation = null;   // Файл другого перекладу
+        let lastShownVerse = null;         // Останній показаний вірш (для оновлення при зміні режиму)
 
         const categoryColorClasses = {
             'pentateuch': 'book-category-pentateuch',
@@ -151,11 +239,18 @@
         const categoryIds = Object.keys(categoryColorClasses);
 
         // --- Ініціалізація ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // Застосовуємо початкові кольори категорій з налаштувань
-            window.electronAPI.getSettings().then(settings => applyCategoryColors(settings.categoryColors || {}));
-            loadTranslations();
+        document.addEventListener('DOMContentLoaded', async () => {
+            const settings = await window.electronAPI.getSettings();
+            applyCategoryColors(settings.categoryColors || {});
+            applyShowFullBookName(settings.showFullBookName !== false);
+            // Стан паралельного перекладу (читаємо до заповнення списків перекладів)
+            parallelMode = settings.parallelMode === true;
+            secondaryTranslation = settings.secondaryTranslation || null;
+
+            await loadTranslations();
             setupCategoryColorPickers();
+            setupShowFullBookNameToggle();
+            setupParallelMode();
         });
 
         document.addEventListener('keydown', handleGlobalKeyDown);
@@ -185,6 +280,19 @@
                     input.value = categoryColors[id];
                 }
             });
+
+            // Встановлюємо стан toggle повної назви
+            document.getElementById('showFullBookNameToggle').checked = currentSettings.showFullBookName !== false;
+
+            // Встановлюємо обрану тему
+            themeSelect.value = currentSettings.theme || 'system';
+
+            // Відображаємо стан паралельного перекладу
+            parallelMode = currentSettings.parallelMode === true;
+            secondaryTranslation = currentSettings.secondaryTranslation || secondaryTranslation;
+            parallelModeToggle.checked = parallelMode;
+            secondaryTranslationRow.style.display = parallelMode ? 'flex' : 'none';
+            if (secondaryTranslation) secondaryTranslationSelect.value = secondaryTranslation;
         });
         closeSettingsBtn.addEventListener('click', () => {
             settingsOverlay.style.display = 'none';
@@ -207,6 +315,11 @@
             }
         });
 
+        themeSelect.addEventListener('change', () => {
+            // Головний процес змінить nativeTheme і надішле 'theme-updated'
+            window.electronAPI.updateProjectorSettings({ theme: themeSelect.value });
+        });
+
         removeBgImageBtn.addEventListener('click', () => {
             // Відправляємо null, щоб скинути зображення
             window.electronAPI.updateProjectorSettings({ backgroundImage: null });
@@ -220,6 +333,222 @@
                     rootStyle.setProperty(`--book-color-${category}`, colors[category]);
                 }
             }
+        }
+
+        function applyShowFullBookName(show) {
+            if (show) {
+                booksContainer.classList.add('show-full-names');
+            } else {
+                booksContainer.classList.remove('show-full-names');
+            }
+        }
+
+        function setupShowFullBookNameToggle() {
+            document.getElementById('showFullBookNameToggle').addEventListener('change', (e) => {
+                applyShowFullBookName(e.target.checked);
+                window.electronAPI.updateProjectorSettings({ showFullBookName: e.target.checked });
+            });
+        }
+
+        function setupParallelMode() {
+            // Початковий стан інтерфейсу
+            parallelModeToggle.checked = parallelMode;
+            secondaryTranslationRow.style.display = parallelMode ? 'flex' : 'none';
+            if (secondaryTranslation) secondaryTranslationSelect.value = secondaryTranslation;
+
+            // Перемикач «два переклади одночасно»
+            parallelModeToggle.addEventListener('change', async (e) => {
+                parallelMode = e.target.checked;
+                secondaryTranslationRow.style.display = parallelMode ? 'flex' : 'none';
+                window.electronAPI.updateProjectorSettings({ parallelMode });
+
+                if (parallelMode) {
+                    // Активуємо обраний (або перший зі списку) другий переклад
+                    const chosen = secondaryTranslationSelect.value;
+                    if (chosen) {
+                        secondaryTranslation = chosen;
+                        await window.electronAPI.setSecondaryTranslation(chosen);
+                    }
+                }
+                await refreshShownVerse();
+            });
+
+            // Вибір другого перекладу
+            secondaryTranslationSelect.addEventListener('change', async (e) => {
+                secondaryTranslation = e.target.value;
+                await window.electronAPI.setSecondaryTranslation(secondaryTranslation);
+                if (parallelMode) await refreshShownVerse();
+            });
+        }
+
+        // Повторно показує поточний вірш (щоб проектор оновився при зміні режиму/перекладу)
+        async function refreshShownVerse() {
+            if (lastShownVerse && selectedBook && selectedChapter) {
+                await showVerseOnProjector(lastShownVerse);
+            }
+        }
+
+        // --- Панель модулів перекладів (іконка біля вибору перекладу) ---
+        const modulesBtn = document.getElementById('modulesBtn');
+        const modulesPanel = document.getElementById('modulesPanel');
+        const installedModulesList = document.getElementById('installedModulesList');
+        const availableModulesList = document.getElementById('availableModulesList');
+        let modulesCatalogLoading = false;
+
+        const languageNames = { ukr: 'українська', rus: 'російська', eng: 'англійська' };
+
+        function isModulesPanelOpen() {
+            return modulesPanel.style.display !== 'none';
+        }
+
+        function openModulesPanel() {
+            modulesPanel.style.display = 'block';
+            renderInstalledModules();
+            loadAvailableModules();
+        }
+
+        function closeModulesPanel() {
+            modulesPanel.style.display = 'none';
+        }
+
+        modulesBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (isModulesPanelOpen()) closeModulesPanel(); else openModulesPanel();
+        });
+
+        // Закриваємо панель при кліку поза нею
+        document.addEventListener('click', (e) => {
+            if (isModulesPanelOpen() && !modulesPanel.contains(e.target)) {
+                closeModulesPanel();
+            }
+        });
+
+        // Скачані переклади: клік перемикає активний переклад
+        function renderInstalledModules() {
+            installedModulesList.innerHTML = '';
+            [...translationSelect.options].forEach(option => {
+                const row = document.createElement('div');
+                row.className = 'module-item module-item--installed';
+                if (option.value === translationSelect.value) {
+                    row.classList.add('module-item--current');
+                }
+
+                const info = document.createElement('div');
+                info.className = 'module-info';
+                const name = document.createElement('div');
+                name.className = 'module-name';
+                name.textContent = option.textContent;
+                info.appendChild(name);
+
+                const check = document.createElement('span');
+                check.className = 'module-check';
+                check.textContent = '✓';
+
+                row.appendChild(info);
+                row.appendChild(check);
+                row.onclick = () => {
+                    if (translationSelect.value !== option.value) {
+                        translationSelect.value = option.value;
+                        translationSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    renderInstalledModules();
+                };
+                installedModulesList.appendChild(row);
+            });
+        }
+
+        // Доступні для скачування: з онлайн-каталогу, без уже встановлених
+        async function loadAvailableModules() {
+            if (modulesCatalogLoading) return;
+            modulesCatalogLoading = true;
+            try {
+                const modules = await window.electronAPI.getModulesCatalog();
+                renderAvailableModules(modules.filter(m => !m.installed));
+            } catch (err) {
+                console.error('Не вдалося завантажити каталог модулів:', err);
+                availableModulesList.innerHTML = '<div class="modules-status">Не вдалося завантажити список. Перевірте інтернет.</div>';
+            } finally {
+                modulesCatalogLoading = false;
+            }
+        }
+
+        function renderAvailableModules(modules) {
+            availableModulesList.innerHTML = '';
+            if (modules.length === 0) {
+                availableModulesList.innerHTML = '<div class="modules-status">Усі модулі з каталогу вже скачані.</div>';
+                return;
+            }
+            modules.forEach(mod => {
+                const row = document.createElement('div');
+                row.className = 'module-item';
+
+                const info = document.createElement('div');
+                info.className = 'module-info';
+
+                const name = document.createElement('div');
+                name.className = 'module-name';
+                name.textContent = mod.localName || mod.name;
+                name.title = mod.localName || mod.name;
+
+                const meta = document.createElement('div');
+                meta.className = 'module-meta';
+                const lang = languageNames[mod.language] || mod.language;
+                meta.textContent = `${lang} · ${(mod.sizeBytes / 1024 / 1024).toFixed(1)} МБ`;
+
+                info.appendChild(name);
+                info.appendChild(meta);
+
+                const btn = document.createElement('button');
+                btn.className = 'module-dl-btn';
+                btn.title = 'Скачати';
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    downloadModuleFromCatalog(mod, row, btn);
+                };
+
+                row.appendChild(info);
+                row.appendChild(btn);
+                availableModulesList.appendChild(row);
+            });
+        }
+
+        async function downloadModuleFromCatalog(mod, row, btn) {
+            btn.disabled = true;
+            row.classList.add('module-item--loading');
+            btn.innerHTML = '<span class="module-spinner"></span>';
+            const result = await window.electronAPI.downloadModule(mod.id);
+            if (result.success) {
+                await refreshTranslationLists();
+                row.remove();
+                renderInstalledModules();
+                if (!availableModulesList.querySelector('.module-item')) {
+                    availableModulesList.innerHTML = '<div class="modules-status">Усі модулі з каталогу вже скачані.</div>';
+                }
+            } else {
+                btn.disabled = false;
+                row.classList.remove('module-item--loading');
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+                alert(`Не вдалося завантажити модуль: ${result.message}`);
+            }
+        }
+
+        // Оновлює списки перекладів, зберігаючи поточний вибір (без скидання навігації)
+        async function refreshTranslationLists() {
+            const primary = translationSelect.value;
+            const secondary = secondaryTranslationSelect.value;
+            const translations = await window.electronAPI.getTranslations();
+            translationSelect.innerHTML = '';
+            secondaryTranslationSelect.innerHTML = '';
+            translations.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name.replace(/\.sqlite(3)?$/i, '');
+                translationSelect.appendChild(option);
+                secondaryTranslationSelect.appendChild(option.cloneNode(true));
+            });
+            if (primary) translationSelect.value = primary;
+            if (secondary) secondaryTranslationSelect.value = secondary;
         }
 
         function setupCategoryColorPickers() {
@@ -242,12 +571,22 @@
             try {
                 const translations = await window.electronAPI.getTranslations();
                 translationSelect.innerHTML = '';
+                secondaryTranslationSelect.innerHTML = '';
                 translations.forEach(name => {
                     const option = document.createElement('option');
                     option.value = name;
                     option.textContent = name.replace(/\.sqlite(3)?$/i, '');
                     translationSelect.appendChild(option);
+
+                    // Дублюємо у список другого перекладу
+                    const option2 = option.cloneNode(true);
+                    secondaryTranslationSelect.appendChild(option2);
                 });
+
+                // Відновлюємо вибір другого перекладу зі збережених налаштувань
+                if (secondaryTranslation) {
+                    secondaryTranslationSelect.value = secondaryTranslation;
+                }
 
                 // Якщо є переклади, спробуємо завантажити книги
                 if (translations.length > 0) {
@@ -267,24 +606,40 @@
         // --- Навігація ---
 
         // Крок 1: Показати книги
+        function populateBooksGrid(books) {
+            booksContainer.innerHTML = '';
+            books.forEach(book => {
+                const button = document.createElement('div');
+                button.className = 'grid-item';
+                // Для навігації з цифрової клавіатури (напр. «1 Коринтян», «2 Петра»)
+                button.dataset.navShort = (book.short_name || '').toLowerCase();
+                button.dataset.navLong = (book.long_name || '').toLowerCase();
+
+                const fullNameSpan = document.createElement('span');
+                fullNameSpan.className = 'book-full-name';
+                fullNameSpan.textContent = book.long_name;
+
+                const shortNameSpan = document.createElement('span');
+                shortNameSpan.className = 'book-short-name';
+                shortNameSpan.textContent = book.short_name;
+
+                button.appendChild(fullNameSpan);
+                button.appendChild(shortNameSpan);
+
+                if (book.category && categoryColorClasses[book.category]) {
+                    button.classList.add(categoryColorClasses[book.category]);
+                }
+                button.onclick = () => handleBookClick(book);
+                booksContainer.appendChild(button);
+            });
+        }
+
         async function showBooks() {
             try {
                 const books = await window.electronAPI.getBooks();
-                allBooks = books; // Зберігаємо книги в кеш для пошуку
-                booksContainer.innerHTML = '';
-                books.forEach(book => {
-                    const button = document.createElement('div');
-                    button.className = 'grid-item';
-                    button.textContent = book.short_name;
-
-                    // Використовуємо категорію, яку нам повернув бекенд (main.js)
-                    if (book.category && categoryColorClasses[book.category]) {
-                        button.classList.add(categoryColorClasses[book.category]);
-                    }
-                    button.onclick = () => handleBookClick(book);
-                    booksContainer.appendChild(button);
-                });
+                allBooks = books;
                 if (books.length > 0) {
+                    populateBooksGrid(books);
                     updateView('books');
                 } else {
                     booksContainer.innerHTML = `<p class="error-message">Не знайдено книг для обраного перекладу. Перевірте структуру бази даних.</p>`;
@@ -306,6 +661,7 @@
                     const button = document.createElement('div');
                     button.className = 'grid-item';
                     button.textContent = chapterNum;
+                    button.dataset.navNum = String(chapterNum); // Для навігації з цифрової клавіатури
                     button.onclick = () => handleChapterClick(chapterNum);
                     chaptersContainer.appendChild(button);
                 });
@@ -344,6 +700,7 @@
                     closeVerseBtn.onclick = (e) => {
                         e.stopPropagation(); // Не викликати клік по віршу
                         window.electronAPI.showVerse('');
+                        lastShownVerse = null;
                         firstSelectedVerse = null;
                         verseItem.classList.remove('selected');
                     };
@@ -377,6 +734,7 @@
             if (isAlreadySelected) {
                 // Якщо клікнули на вже вибраний вірш, то просто знімаємо виділення і ховаємо текст.
                 window.electronAPI.showVerse('');
+                lastShownVerse = null;
                 firstSelectedVerse = null; // Скидаємо вибір
             } else {
                 // Якщо клікнули на новий вірш:
@@ -395,34 +753,128 @@
         smartSearchInput.addEventListener('input', handleSmartSearchInput);
         smartSearchInput.addEventListener('keydown', handleSearchKeyDown);
 
+        let textSearchTimeout = null;
+        let textSearchId = 0;
+
         function handleSmartSearchInput(e) {
             const query = e.target.value;
-            userTypedQuery = query; // Оновлюємо запит користувача
+            userTypedQuery = query;
 
-            // Коли користувач друкує, скидаємо вибір стрілками,
-            // щоб Enter обробляв текст, а не попередній вибір.
             activeSuggestionIndex = -1;
             document.querySelectorAll('.suggestion-item.active').forEach(el => el.classList.remove('active'));
 
-            // Евристика: припиняємо показувати підказки, якщо запит містить пробіл,
-            // за яким іде цифра (це означає, що користувач почав вводити розділ).
+            if (query.length === 0) {
+                hideSuggestions();
+                return;
+            }
+
+            // Пробіл + цифра → навігація по книзі/розділу, підказки не потрібні
             if (/\s\d/.test(query)) {
                 hideSuggestions();
                 return;
             }
 
-            const bookQuery = query.toLowerCase();
-            if (bookQuery.length === 0) {
+            // 2+ слова → пошук по тексту
+            if (/\S+\s+\S/.test(query)) {
+                clearTimeout(textSearchTimeout);
                 hideSuggestions();
+                textSearchTimeout = setTimeout(() => doTextSearch(query), 400);
                 return;
             }
 
+            // 1 слово → підказки за назвою книги
+            const bookQuery = query.toLowerCase();
             const filteredBooks = allBooks.filter(book =>
                 book.short_name.toLowerCase().startsWith(bookQuery) ||
                 book.long_name.toLowerCase().startsWith(bookQuery)
             );
-
             showSuggestions(filteredBooks);
+        }
+
+        async function doTextSearch(query) {
+            const myId = ++textSearchId;
+            suggestionsBox.innerHTML = '<div class="suggestion-item suggestion-loading">Пошук…</div>';
+            suggestionsBox.style.display = 'block';
+            try {
+                const results = await window.electronAPI.searchVerses({ query });
+                if (myId !== textSearchId) return;
+                if (results.length === 0) {
+                    suggestionsBox.innerHTML = '<div class="suggestion-item">Нічого не знайдено</div>';
+                    return;
+                }
+                showVerseSearchResults(results, query);
+            } catch (err) {
+                if (myId !== textSearchId) return;
+                console.error('Помилка текстового пошуку:', err);
+                hideSuggestions();
+            }
+        }
+
+        function highlightSearchWords(text, query) {
+            const words = query.trim().split(/\s+/).filter(w => w.length >= 2);
+            let result = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            for (const word of words) {
+                const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                result = result.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
+            }
+            return result;
+        }
+
+        function showVerseSearchResults(results, query) {
+            suggestionsBox.innerHTML = '';
+            for (const result of results) {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item verse-search-item';
+                div.dataset.isVerseResult = 'true';
+
+                const ref = document.createElement('span');
+                ref.className = 'verse-search-ref';
+                ref.textContent = `${result.shortName} ${result.chapter}:${result.verse}`;
+
+                const snippet = document.createElement('span');
+                snippet.className = 'verse-search-snippet';
+                const truncated = result.text.length > 120 ? result.text.substring(0, 120) + '…' : result.text;
+                snippet.innerHTML = highlightSearchWords(truncated, query);
+
+                div.appendChild(ref);
+                div.appendChild(snippet);
+                div.onclick = () => selectVerseFromSearch(result);
+                suggestionsBox.appendChild(div);
+            }
+            suggestionsBox.style.display = 'block';
+            activeSuggestionIndex = -1;
+        }
+
+        async function selectVerseFromSearch(result) {
+            // bookId comparison uses == to tolerate any type mismatch (number vs string)
+            const book = allBooks.find(b => b.id == result.bookId);
+            if (!book) {
+                console.warn('[search] Book not found in allBooks for bookId:', result.bookId, 'allBooks length:', allBooks.length);
+                hideSearchOverlay();
+                return;
+            }
+            selectedBook = book;
+            await handleChapterClick(result.chapter);
+
+            // Find verse using both exact and string-coerced comparison
+            const verseStr = String(result.verse);
+            const verseEl = versesContainer.querySelector(`[data-verse-num="${verseStr}"]`)
+                ?? [...versesContainer.querySelectorAll('.verse-text-item')]
+                    .find(el => String(el.dataset.verseNum) === verseStr)
+                ?? null;
+
+            if (verseEl) {
+                document.querySelectorAll('#versesContainer .verse-text-item.selected')
+                    .forEach(el => el.classList.remove('selected'));
+                verseEl.classList.add('selected');
+                firstSelectedVerse = result.verse;
+                verseEl.scrollIntoView({ block: 'center' });
+                showVerseOnProjector(verseStr);
+            } else {
+                console.warn('[search] Verse element not found for verse:', result.verse, 'in chapter:', result.chapter);
+            }
+
+            hideSearchOverlay();
         }
 
         function showSuggestions(suggestions) {
@@ -474,12 +926,14 @@
                 if (activeSuggestionIndex < -1) { activeSuggestionIndex = suggestions.length - 1; }
 
                 if (activeSuggestionIndex === -1) {
-                    // Жодна пропозиція не активна, повертаємо текст користувача
                     smartSearchInput.value = userTypedQuery;
                 } else {
                     const newActiveSuggestion = suggestions[activeSuggestionIndex];
                     newActiveSuggestion.classList.add('active');
-                    smartSearchInput.value = newActiveSuggestion.dataset.shortName;
+                    // Verse results don't have a short name to fill in
+                    if (!newActiveSuggestion.dataset.isVerseResult) {
+                        smartSearchInput.value = newActiveSuggestion.dataset.shortName;
+                    }
                     newActiveSuggestion.scrollIntoView({ block: 'nearest' });
                 }
                 return;
@@ -502,6 +956,13 @@
                 // Otherwise, proceed with the query in the input box
                 const query = smartSearchInput.value.trim();
                 if (!query) { hideSearchOverlay(); return; }
+
+                // Multi-word query → trigger text search immediately
+                if (/\S+\s+\S/.test(query) && !/\s\d/.test(query)) {
+                    clearTimeout(textSearchTimeout);
+                    doTextSearch(query);
+                    return;
+                }
 
                 const parts = query.replace(':', ' ').split(' ').filter(p => p);
 
@@ -544,13 +1005,163 @@
             hideSuggestions();
         }
 
+        // --- Навігація по сітці з цифрової клавіатури ---
+
+        // Повертає видимий контейнер (вірші, розділи або книги), по якому можна навігувати цифрами
+        function getActiveNavGrid() {
+            if (versesContainer.style.display !== 'none') return versesContainer;
+            if (chaptersContainer.style.display !== 'none') return chaptersContainer;
+            if (booksContainer.style.display !== 'none') return booksContainer;
+            return null;
+        }
+
+        // Елементи для навігації у конкретному контейнері
+        function getNavItems(container) {
+            const selector = container === versesContainer ? '.verse-text-item' : '.grid-item';
+            return [...container.querySelectorAll(selector)];
+        }
+
+        // Числове значення елемента (номер розділу або вірша); null — якщо це книга
+        function navItemValue(item) {
+            if (item.dataset.navNum !== undefined) return item.dataset.navNum;
+            if (item.dataset.verseNum !== undefined) return item.dataset.verseNum;
+            return null;
+        }
+
+        // Чи підходить елемент під набране число (за префіксом)
+        function gridItemMatches(item, buffer) {
+            const value = navItemValue(item);
+            if (value !== null) {
+                return value.startsWith(buffer);
+            }
+            const short = item.dataset.navShort || '';
+            const long = item.dataset.navLong || '';
+            return short.startsWith(buffer) || long.startsWith(buffer);
+        }
+
+        // Прибираємо підсвічування і скидаємо набране число
+        function clearGridNav() {
+            gridNavBuffer = '';
+            if (gridNavTimeout) { clearTimeout(gridNavTimeout); gridNavTimeout = null; }
+            document.querySelectorAll('.nav-match, .nav-active, .nav-dimmed')
+                .forEach(el => el.classList.remove('nav-match', 'nav-active', 'nav-dimmed'));
+            gridNavBadge.style.display = 'none';
+            gridNavBadge.textContent = '';
+        }
+
+        // Підсвічуємо варіанти, що починаються з набраного числа, і "пропонуємо" найкращий
+        function applyGridNav() {
+            const grid = getActiveNavGrid();
+            if (!grid) { clearGridNav(); return { matches: [], active: null }; }
+
+            const items = getNavItems(grid);
+            const matches = [];
+            let exact = null;
+
+            items.forEach(item => {
+                item.classList.remove('nav-match', 'nav-active', 'nav-dimmed');
+                if (gridItemMatches(item, gridNavBuffer)) {
+                    item.classList.add('nav-match');
+                    matches.push(item);
+                    if (navItemValue(item) === gridNavBuffer) exact = item;
+                } else {
+                    item.classList.add('nav-dimmed');
+                }
+            });
+
+            // "Запропонований" варіант: точний збіг, інакше — перший зі списку
+            const active = exact || matches[0] || null;
+            if (active) {
+                active.classList.add('nav-active');
+                active.scrollIntoView({ block: 'nearest' });
+            }
+
+            gridNavBadge.textContent = gridNavBuffer;
+            gridNavBadge.style.display = 'inline-flex';
+            return { matches, active };
+        }
+
+        // Підтверджуємо вибір "запропонованого" варіанту
+        function selectGridNavActive() {
+            const grid = getActiveNavGrid();
+            const active = grid ? grid.querySelector('.nav-active') : null;
+            clearGridNav();
+            if (active) active.click();
+        }
+
+        // Обробка натискання цифри у режимі навігації по сітці
+        function handleGridNumberKey(digit) {
+            if (gridNavTimeout) { clearTimeout(gridNavTimeout); gridNavTimeout = null; }
+
+            gridNavBuffer += digit;
+            let result = applyGridNav();
+
+            // Якщо під накопичене число нічого не підходить — починаємо з останньої цифри
+            if (result.matches.length === 0) {
+                gridNavBuffer = digit;
+                result = applyGridNav();
+            }
+
+            if (result.matches.length === 1) {
+                // Єдиний варіант — переходимо автоматично (з короткою паузою, щоб було видно вибір)
+                gridNavTimeout = setTimeout(selectGridNavActive, 250);
+            } else if (result.matches.length === 0) {
+                clearGridNav();
+            } else {
+                // Кілька варіантів — чекаємо ще цифр або Enter; скидаємо після паузи
+                gridNavTimeout = setTimeout(clearGridNav, 1500);
+            }
+        }
+
         function handleGlobalKeyDown(e) {
             // 1. Якщо оверлей відкритий, його власний обробник (handleSearchKeyDown) розбереться з Escape.
             if (searchOverlay.style.display !== 'none') {
                 return;
             }
+            // Ігноруємо, якщо відкриті налаштування
+            if (settingsOverlay.style.display !== 'none') {
+                return;
+            }
+            // Якщо відкрита панель модулів — Escape закриває її, решту ігноруємо
+            if (isModulesPanelOpen()) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeModulesPanel();
+                }
+                return;
+            }
 
-            // 2. Обробка повернення назад
+            const onInputField = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT';
+            const hasModifier = e.metaKey || e.ctrlKey || e.altKey;
+
+            // 2. Навігація по сітці (книги/розділи) з цифрової клавіатури
+            if (!onInputField && !hasModifier && /^[0-9]$/.test(e.key) && getActiveNavGrid()) {
+                e.preventDefault();
+                handleGridNumberKey(e.key);
+                return;
+            }
+
+            // Якщо вже набране число — Enter підтверджує, Backspace стирає, Escape скасовує
+            if (gridNavBuffer) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    selectGridNavActive();
+                    return;
+                }
+                if (e.key === 'Backspace') {
+                    e.preventDefault();
+                    gridNavBuffer = gridNavBuffer.slice(0, -1);
+                    if (gridNavBuffer) applyGridNav(); else clearGridNav();
+                    return;
+                }
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    clearGridNav();
+                    return;
+                }
+            }
+
+            // 3. Обробка повернення назад
             if (e.key === 'Escape' || e.key === 'Delete' || e.key === 'Backspace') {
                 // Якщо кнопка "Назад" видима, імітуємо клік по ній
                 if (backBtn.style.display !== 'none') {
@@ -561,11 +1172,11 @@
                 return;
             }
 
-            // 3. Відкриття пошуку
+            // 4. Відкриття пошуку
             // Ігноруємо, якщо фокус на іншому полі вводу (напр. вибір перекладу)
-            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT') return;
+            if (onInputField) return;
             // Ігноруємо, якщо натиснуто модифікатор
-            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            if (hasModifier) return;
             // Відкриваємо пошук, якщо натиснуто літеру або цифру
             if (e.key.length === 1 && e.key.match(/[\p{L}\p{N}]/u)) {
                 e.preventDefault();
@@ -577,6 +1188,8 @@
         // --- Керування інтерфейсом ---
 
         function updateView(viewName) {
+            // Скидаємо набране число при зміні виду
+            clearGridNav();
             // Ховаємо всі контейнери
             booksContainer.style.display = 'none';
             chaptersContainer.style.display = 'none';
@@ -585,17 +1198,17 @@
 
             if (viewName === 'books') {
                 booksContainer.style.display = 'grid';
-                currentSelectionHeader.textContent = 'Оберіть книгу';
+                currentSelectionHeader.innerHTML = '<span class="nav-instruction">Оберіть книгу</span>';
                 selectedBook = null;
                 selectedChapter = null;
             } else if (viewName === 'chapters') {
                 chaptersContainer.style.display = 'grid';
-                backBtn.style.display = 'inline-block';
-                currentSelectionHeader.textContent = `${selectedBook.long_name} — Оберіть розділ`;
+                backBtn.style.display = 'inline-flex';
+                currentSelectionHeader.innerHTML = `<span class="nav-book-name">${selectedBook.long_name}</span><span class="nav-instruction"> — Оберіть розділ</span>`;
             } else if (viewName === 'verses') {
                 versesContainer.style.display = 'flex';
-                backBtn.style.display = 'inline-block';
-                currentSelectionHeader.textContent = `${selectedBook.long_name} ${selectedChapter} — Оберіть вірш`;
+                backBtn.style.display = 'inline-flex';
+                currentSelectionHeader.innerHTML = `<span class="nav-book-name">${selectedBook.long_name} ${selectedChapter}</span><span class="nav-instruction"> — Оберіть вірш</span>`;
             }
         }
 
@@ -614,10 +1227,38 @@
         translationSelect.addEventListener('change', async (event) => {
             const newDbName = event.target.value;
             const result = await window.electronAPI.switchTranslation(newDbName);
-            if (result.success) {
-                await showBooks(); // Перезавантажуємо книги для нового перекладу
-            } else {
+            if (!result.success) {
                 alert(`Не вдалося переключити переклад: ${result.message}`);
+                return;
+            }
+
+            const onVerses   = versesContainer.style.display   !== 'none';
+            const onChapters = chaptersContainer.style.display !== 'none';
+
+            // Якщо користувач на розділах або віршах — залишаємося там
+            if ((onVerses || onChapters) && selectedBook) {
+                const savedBookId  = selectedBook.id;
+                const savedChapter = selectedChapter;
+
+                // Оновлюємо кеш книг і перерендеримо сітку у фоні
+                const books = await window.electronAPI.getBooks();
+                allBooks = books;
+                populateBooksGrid(books);
+
+                // Знаходимо ту саму книгу в новому перекладі
+                const newBook = allBooks.find(b => b.id == savedBookId);
+                if (!newBook) { await showBooks(); return; }
+                selectedBook = newBook;
+
+                if (onVerses) {
+                    // Перезавантажуємо вірші того самого розділу
+                    await handleChapterClick(savedChapter);
+                } else {
+                    // Перезавантажуємо розділи тієї самої книги
+                    await handleBookClick(newBook);
+                }
+            } else {
+                await showBooks();
             }
         });
 
@@ -682,7 +1323,21 @@
                 const result = await window.electronAPI.getVerseText({
                     bookId: selectedBook.id, chapter: selectedChapter, versesStr: versesStr
                 });
-                window.electronAPI.showVerse({ text: result.text, reference: result.reference });
+                lastShownVerse = versesStr;
+
+                const payload = { text: result.text, reference: result.reference };
+
+                // Якщо увімкнено паралельний режим — додаємо текст другого перекладу
+                if (parallelMode && secondaryTranslation) {
+                    const secondary = await window.electronAPI.getSecondaryVerseText({
+                        bookId: selectedBook.id, chapter: selectedChapter, versesStr: versesStr
+                    });
+                    if (secondary && secondary.text) {
+                        payload.secondaryText = secondary.text;
+                    }
+                }
+
+                window.electronAPI.showVerse(payload);
             } catch (error) {
                 console.error('Помилка отримання тексту вірша:', error);
                 alert('Не вдалося отримати текст вірша. Перевірте консоль.');
@@ -710,19 +1365,62 @@
         const updateNotification = document.getElementById('update-notification');
         const updateMessage = document.getElementById('update-message');
         const restartAppBtn = document.getElementById('restart-app-btn');
+        const appVersionSpan = document.getElementById('appVersion');
+        const checkUpdatesBtn = document.getElementById('checkUpdatesBtn');
+        const installUpdateBtn = document.getElementById('installUpdateBtn');
+        const updateStatusText = document.getElementById('updateStatusText');
 
-        window.electronAPI.onUpdateAvailable(() => {
+        // Показуємо поточну версію програми
+        window.electronAPI.getAppVersion().then(v => { appVersionSpan.textContent = v; });
+
+        // Ручна перевірка оновлень із налаштувань
+        checkUpdatesBtn.addEventListener('click', async () => {
+            checkUpdatesBtn.disabled = true;
+            updateStatusText.textContent = 'Перевіряємо наявність оновлень…';
+            const result = await window.electronAPI.checkForUpdates();
+            if (!result.ok) {
+                updateStatusText.textContent = result.message;
+                checkUpdatesBtn.disabled = false;
+            }
+            // Якщо ok — далі статус оновлять події update-available / update-not-available
+        });
+
+        window.electronAPI.onUpdateAvailable((version) => {
             updateMessage.textContent = 'Знайдено оновлення! Завантажується...';
             updateNotification.style.display = 'block';
+            updateStatusText.textContent = version
+                ? `Знайдено нову версію ${version}. Завантажується…`
+                : 'Знайдено оновлення. Завантажується…';
+        });
+
+        window.electronAPI.onUpdateNotAvailable(() => {
+            updateStatusText.textContent = 'У вас найновіша версія.';
+            checkUpdatesBtn.disabled = false;
+        });
+
+        window.electronAPI.onUpdateDownloadProgress((percent) => {
+            updateStatusText.textContent = `Завантаження оновлення: ${percent}%`;
         });
 
         window.electronAPI.onUpdateDownloaded(() => {
             updateMessage.textContent = 'Оновлення завантажено. Перезапустіть програму, щоб встановити.';
             restartAppBtn.style.display = 'inline-block';
             updateNotification.style.display = 'block';
+            updateStatusText.textContent = 'Оновлення завантажено та готове до встановлення.';
+            installUpdateBtn.style.display = 'inline-block';
+            checkUpdatesBtn.style.display = 'none';
+        });
+
+        window.electronAPI.onUpdateError((message) => {
+            updateStatusText.textContent = `Помилка оновлення: ${message}`;
+            checkUpdatesBtn.disabled = false;
         });
 
         restartAppBtn.addEventListener('click', () => {
+            window.electronAPI.restartAppToUpdate();
+        });
+
+        installUpdateBtn.addEventListener('click', () => {
             window.electronAPI.restartAppToUpdate();
         });
 

@@ -1,14 +1,18 @@
-const { app, BrowserWindow, ipcMain, screen, nativeTheme, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, nativeTheme, dialog, shell, Menu } = require('electron');
 const path = require('path');
 const url = require('url');
 const Database = require('better-sqlite3');
 const fs = require('fs');
+const crypto = require('crypto');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 
 let adminWindow;
 let projectorWindow;
 let db;
+// Другий (паралельний) переклад
+let secondaryDb;
+let secondaryDbName = '';
 
 // Шлях до файлу налаштувань у папці даних користувача
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
@@ -16,6 +20,10 @@ const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 let projectorSettings = {
   backgroundColor: 'black', // Колір фону за замовчуванням
   backgroundImage: null, // Шлях до зображення
+  showFullBookName: true, // Показувати повну назву книги над скороченням
+  theme: 'system', // Тема інтерфейсу: 'system' | 'light' | 'dark'
+  parallelMode: false, // Показувати два переклади одночасно
+  secondaryTranslation: null, // Файл другого перекладу для паралельного показу
   categoryColors: {
     pentateuch: '#FFDDC1',
     historical: '#CCE5FF',
@@ -99,6 +107,143 @@ function getAllTranslations() {
   return Array.from(translationFiles);
 }
 
+// --- Онлайн-каталог модулів перекладів ---
+
+const MODULES_API_BASE = 'https://bible-api-itministy.web.app';
+
+// Стандартна нумерація книг MyBible (66 книг), як у вбудованих перекладах.
+// Індекс у масиві відповідає sort_order - 1 модуля з каталогу.
+const MYBIBLE_BOOK_NUMBERS = [
+  10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160,
+  190, 220, 230, 240, 250, 260, 290, 300, 310, 330, 340, 350, 360, 370,
+  380, 390, 400, 410, 420, 430, 440, 450, 460, 470, 480, 490, 500, 510,
+  520, 530, 540, 550, 560, 570, 580, 590, 600, 610, 620, 630, 640, 650,
+  660, 670, 680, 690, 700, 710, 720, 730
+];
+
+// Ім'я файлу, під яким модуль з каталогу зберігається у папці перекладів
+// (назва файлу без розширення показується користувачу у списку перекладів)
+function moduleFileName(mod) {
+  const safe = String(mod.localName || mod.name || mod.id)
+    .replace(/[\\/:*?"<>|]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 40)
+    .trim();
+  return `${safe || mod.id}.sqlite`;
+}
+
+async function fetchModulesCatalog() {
+  const res = await fetch(`${MODULES_API_BASE}/catalog.json`);
+  if (!res.ok) throw new Error(`Сервер каталогу відповів з помилкою (HTTP ${res.status}).`);
+  const catalog = await res.json();
+  return catalog.modules || [];
+}
+
+// Конвертує модуль з каталогу (books.id/name/sort_order, verses.book_id)
+// у формат MyBible, який використовує решта програми
+// (books.book_number/short_name, verses.book_number)
+function convertModuleToMyBible(sourcePath, targetPath) {
+  const src = new Database(sourcePath, { readonly: true, fileMustExist: true });
+  fs.rmSync(targetPath, { force: true });
+  const dst = new Database(targetPath);
+  try {
+    dst.exec(`
+      CREATE TABLE books (
+        book_number NUMERIC NOT NULL,
+        short_name TEXT NOT NULL,
+        long_name TEXT NOT NULL,
+        book_color TEXT NOT NULL DEFAULT '',
+        sorting_order NUMERIC NOT NULL DEFAULT 0,
+        PRIMARY KEY (book_number));
+      CREATE TABLE verses (
+        book_number NUMERIC NOT NULL,
+        chapter NUMERIC NOT NULL,
+        verse NUMERIC NOT NULL,
+        text TEXT NOT NULL DEFAULT '',
+        PRIMARY KEY (book_number, chapter, verse));
+    `);
+
+    const books = src.prepare('SELECT id, name, long_name, sort_order FROM books ORDER BY sort_order').all();
+    const bookNumberById = {};
+    const insBook = dst.prepare(
+      "INSERT INTO books (book_number, short_name, long_name, book_color, sorting_order) VALUES (?, ?, ?, '', ?)"
+    );
+    books.forEach((b, i) => {
+      const num = MYBIBLE_BOOK_NUMBERS[b.sort_order - 1] ?? (b.sort_order * 10);
+      bookNumberById[b.id] = num;
+      insBook.run(num, b.name, b.long_name, i);
+    });
+
+    const insVerse = dst.prepare('INSERT INTO verses (book_number, chapter, verse, text) VALUES (?, ?, ?, ?)');
+    const insertAll = dst.transaction(() => {
+      for (const v of src.prepare('SELECT book_id, chapter, verse, text FROM verses').iterate()) {
+        const num = bookNumberById[v.book_id];
+        if (num !== undefined) insVerse.run(num, v.chapter, v.verse, v.text);
+      }
+    });
+    insertAll();
+  } catch (e) {
+    dst.close();
+    fs.rmSync(targetPath, { force: true }); // не залишаємо недороблений файл
+    src.close();
+    throw e;
+  }
+  src.close();
+  dst.close();
+}
+
+// Список модулів каталогу з позначкою, які вже встановлені
+ipcMain.handle('get-modules-catalog', async () => {
+  const modules = await fetchModulesCatalog();
+  const installed = new Set(getAllTranslations().map(f => f.toLowerCase()));
+  return modules.map(m => ({
+    id: m.id,
+    name: m.name,
+    localName: m.localName,
+    language: m.language,
+    sizeBytes: m.sizeBytes,
+    fileName: moduleFileName(m),
+    installed: installed.has(moduleFileName(m).toLowerCase())
+  }));
+});
+
+// Завантажує модуль з каталогу, перевіряє суму та конвертує у папку перекладів
+ipcMain.handle('download-module', async (event, moduleId) => {
+  try {
+    const modules = await fetchModulesCatalog();
+    const mod = modules.find(m => m.id === moduleId);
+    if (!mod) throw new Error(`Модуль "${moduleId}" не знайдено в каталозі.`);
+
+    const fileRes = await fetch(`${MODULES_API_BASE}${mod.url}`);
+    if (!fileRes.ok) throw new Error(`Не вдалося завантажити файл (HTTP ${fileRes.status}).`);
+    const buffer = Buffer.from(await fileRes.arrayBuffer());
+
+    if (mod.sha256) {
+      const hash = crypto.createHash('sha256').update(buffer).digest('hex');
+      if (hash !== mod.sha256) throw new Error('Контрольна сума файлу не збігається — спробуйте ще раз.');
+    }
+
+    if (!fs.existsSync(userTranslationsPath)) {
+      fs.mkdirSync(userTranslationsPath, { recursive: true });
+    }
+    const tmpPath = path.join(userTranslationsPath, `.${mod.id}.download`);
+    const targetPath = path.join(userTranslationsPath, moduleFileName(mod));
+    fs.writeFileSync(tmpPath, buffer);
+    try {
+      convertModuleToMyBible(tmpPath, targetPath);
+    } finally {
+      fs.rmSync(tmpPath, { force: true });
+    }
+
+    log.info(`Module downloaded: ${mod.id} -> ${targetPath}`);
+    return { success: true, fileName: moduleFileName(mod) };
+  } catch (e) {
+    log.error('download-module failed:', e);
+    return { success: false, message: e.message || String(e) };
+  }
+});
+
 // Знаходить повний шлях до файлу перекладу, надаючи пріоритет файлам користувача
 function getTranslationDbPath(dbName) {
   const userPath = path.join(userTranslationsPath, dbName);
@@ -120,14 +265,64 @@ try {
   console.error('Не вдалося створити директорію для перекладів:', e);
 }
 
+// Налаштовуємо назву застосунку та меню, щоб прибрати дефолтне «Electron»
+function setupBranding() {
+  app.setName('Bible Projector');
+
+  // Панель «Про програму» (macOS) без згадок Electron
+  app.setAboutPanelOptions({
+    applicationName: 'Bible Projector',
+    applicationVersion: app.getVersion(),
+    version: '',
+    copyright: '© Bible Projector'
+  });
+
+  if (process.platform === 'darwin') {
+    // На macOS повністю прибрати меню не можна, тож робимо мінімальне власне.
+    // Підменю «Редагувати» потрібне, щоб у полях вводу працювали Cmd+C/V/A.
+    const template = [
+      {
+        label: 'Bible Projector',
+        submenu: [
+          { role: 'about', label: 'Про Bible Projector' },
+          { type: 'separator' },
+          { role: 'hide', label: 'Сховати' },
+          { role: 'hideOthers', label: 'Сховати інші' },
+          { role: 'unhide', label: 'Показати все' },
+          { type: 'separator' },
+          { role: 'quit', label: 'Вийти' }
+        ]
+      },
+      {
+        label: 'Редагувати',
+        submenu: [
+          { role: 'undo', label: 'Скасувати' },
+          { role: 'redo', label: 'Повторити' },
+          { type: 'separator' },
+          { role: 'cut', label: 'Вирізати' },
+          { role: 'copy', label: 'Копіювати' },
+          { role: 'paste', label: 'Вставити' },
+          { role: 'selectAll', label: 'Виділити все' }
+        ]
+      }
+    ];
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  } else {
+    // Windows/Linux: прибираємо стандартне меню Electron повністю
+    Menu.setApplicationMenu(null);
+  }
+}
+
 // Функція для створення вікна адміністратора
 function createAdminWindow() {
+  const { height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+
   adminWindow = new BrowserWindow({
     width: 500,
-    height: 980,
-    icon: path.join(__dirname, 'icon.png'), // Додаємо іконку для вікна
+    height: screenHeight,
+    resizable: false,
+    icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
-      // preload-скрипт для безпечної комунікації між процесами
       preload: path.join(__dirname, 'preload.js')
     }
   });
@@ -202,8 +397,12 @@ function createProjectorWindow() {
 
 // Запускаємо створення вікна, коли програма готова
 app.whenReady().then(() => {
+  // Прибираємо дефолтне меню Electron і ставимо власну назву
+  setupBranding();
+
   // Завантажуємо збережені налаштування на старті
   loadSettings();
+  applyThemeSetting(projectorSettings.theme);
 
   const translations = getAllTranslations();
 
@@ -218,7 +417,23 @@ app.whenReady().then(() => {
       } catch (err) {
         console.error(`Не вдалося підключитися до бази даних ${currentDbName}:`, err.message);
       }
-    } else {
+    }
+
+    // Відкриваємо другий переклад, якщо увімкнено паралельний режим
+    if (projectorSettings.parallelMode && projectorSettings.secondaryTranslation) {
+      const secondaryPath = getTranslationDbPath(projectorSettings.secondaryTranslation);
+      if (secondaryPath) {
+        try {
+          secondaryDb = new Database(secondaryPath, { readonly: true, fileMustExist: true });
+          secondaryDbName = projectorSettings.secondaryTranslation;
+          console.log(`Успішно підключено до другого перекладу: ${secondaryDbName}`);
+        } catch (err) {
+          console.error(`Не вдалося підключитися до другого перекладу ${projectorSettings.secondaryTranslation}:`, err.message);
+        }
+      }
+    }
+
+    if (!dbPath) {
       console.error(`Файл для перекладу за замовчуванням ${currentDbName} не знайдено.`);
     }
   } else {
@@ -243,8 +458,14 @@ app.whenReady().then(() => {
 
   createAdminWindow();
 
-  // Перевірка оновлень після створення головного вікна
-  autoUpdater.checkForUpdatesAndNotify();
+  // Перевірка оновлень після створення головного вікна та далі кожні 4 години
+  // (лише у встановленій програмі — у режимі розробки оновлення недоступні)
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdatesAndNotify().catch(err => log.error('Update check failed:', err));
+    setInterval(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch(err => log.error('Update check failed:', err));
+    }, 4 * 60 * 60 * 1000);
+  }
 
   app.on('activate', () => {
     // На macOS зазвичай повторно створюють вікно, коли клікають на іконку в доці
@@ -267,6 +488,10 @@ app.on('will-quit', () => {
   if (db) {
     db.close();
     console.log('З\'єднання з базою даних закрито.');
+  }
+  if (secondaryDb) {
+    secondaryDb.close();
+    console.log('З\'єднання з другим перекладом закрито.');
   }
 });
 
@@ -313,23 +538,69 @@ ipcMain.handle('select-background-image', async () => {
 });
 
 // --- Обробка подій auto-updater ---
-autoUpdater.on('update-available', () => {
-  log.info('Update available.');
-  if (adminWindow) adminWindow.webContents.send('update-available');
+
+// Надсилає подію у вікно адміністратора, якщо воно ще відкрите
+function sendToAdmin(channel, ...args) {
+  if (adminWindow && !adminWindow.isDestroyed()) {
+    adminWindow.webContents.send(channel, ...args);
+  }
+}
+
+autoUpdater.on('update-available', (info) => {
+  log.info('Update available:', info.version);
+  sendToAdmin('update-available', info.version);
+});
+
+autoUpdater.on('update-not-available', () => {
+  log.info('Update not available.');
+  sendToAdmin('update-not-available');
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  sendToAdmin('update-download-progress', Math.round(progress.percent));
 });
 
 autoUpdater.on('update-downloaded', () => {
   log.info('Update downloaded.');
-  if (adminWindow) adminWindow.webContents.send('update-downloaded');
+  sendToAdmin('update-downloaded');
 });
+
+autoUpdater.on('error', (err) => {
+  log.error('Updater error:', err);
+  sendToAdmin('update-error', err.message || String(err));
+});
+
+// Ручна перевірка оновлень із кнопки в налаштуваннях
+ipcMain.handle('check-for-updates', async () => {
+  if (!app.isPackaged) {
+    return { ok: false, message: 'Перевірка оновлень доступна лише у встановленій програмі.' };
+  }
+  try {
+    await autoUpdater.checkForUpdates();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e.message || String(e) };
+  }
+});
+
+ipcMain.handle('get-app-version', () => app.getVersion());
 
 ipcMain.on('restart-app-to-update', () => {
   autoUpdater.quitAndInstall();
 });
 
+// Застосовує тему інтерфейсу через nativeTheme (керує shouldUseDarkColors)
+function applyThemeSetting(theme) {
+  nativeTheme.themeSource = ['light', 'dark'].includes(theme) ? theme : 'system';
+}
+
 // Команда на оновлення налаштувань
 ipcMain.on('update-projector-settings', (event, settings) => {
   console.log('[main] Отримано оновлення налаштувань:', settings);
+
+  if (settings.theme) {
+    applyThemeSetting(settings.theme);
+  }
 
   // Обробка вкладених налаштувань, як-от кольори категорій
   if (settings.categoryColors) {
@@ -559,59 +830,138 @@ ipcMain.handle('get-chapter-text', async (event, { bookId, chapter }) => {
   }
 });
 
-// Команда на отримання тексту вірша з БД
-ipcMain.handle('get-verse-text', async (event, { bookId, chapter, versesStr }) => {
-  if (!db) {
-    // Аналогічно, кидаємо помилку
-    throw new Error('Немає з\'єднання з базою даних. Будь ласка, виберіть переклад.');
+// Читає текст вірша(ів) із заданої бази даних і повертає { reference, text }
+function readVerseFromDb(database, bookId, chapter, versesStr) {
+  // 1. Отримуємо назву книги для посилання
+  const bookQuery = database.prepare('SELECT long_name, short_name FROM books WHERE book_number = ?');
+  const book = bookQuery.get(bookId);
+  if (!book) {
+    throw new Error(`Книгу з ID ${bookId} не знайдено.`);
   }
 
+  // 2. Парсимо рядок з віршами (напр. "16", "16-18")
+  const verseParts = versesStr.split('-').map(v => parseInt(v.trim(), 10));
+  let startVerse, endVerse;
+
+  if (verseParts.length === 1 && !isNaN(verseParts[0])) {
+    startVerse = endVerse = verseParts[0];
+  } else if (verseParts.length === 2 && !isNaN(verseParts[0]) && !isNaN(verseParts[1])) {
+    startVerse = Math.min(verseParts[0], verseParts[1]);
+    endVerse = Math.max(verseParts[0], verseParts[1]);
+  } else {
+    throw new Error(`Неправильний формат вірша: ${versesStr}`);
+  }
+
+  // 3. Отримуємо вірші з бази даних
+  const verseQuery = database.prepare(`
+    SELECT verse, text
+    FROM verses
+    WHERE book_number = ? AND chapter = ? AND verse BETWEEN ? AND ?
+    ORDER BY verse ASC
+  `);
+  const verseRows = verseQuery.all(bookId, chapter, startVerse, endVerse);
+
+  if (verseRows.length === 0) {
+    return { reference: `${book.short_name} ${chapter}:${versesStr}`, text: '(Текст не знайдено)' };
+  }
+
+  // 4. Форматуємо результат
+  const reference = `${book.long_name} ${chapter}:${versesStr}`;
+  // Очищуємо текст від тегів і об'єднуємо вірші (кожен — з нового рядка).
+  const fullText = verseRows.map(row => cleanVerseText(row.text)).join('\n');
+
+  return { reference, text: fullText };
+}
+
+// Команда на отримання тексту вірша з основної БД
+ipcMain.handle('get-verse-text', async (event, { bookId, chapter, versesStr }) => {
+  if (!db) {
+    throw new Error('Немає з\'єднання з базою даних. Будь ласка, виберіть переклад.');
+  }
   try {
-    // 1. Отримуємо назву книги для посилання
-    const bookQuery = db.prepare('SELECT long_name, short_name FROM books WHERE book_number = ?');
-    const book = bookQuery.get(bookId);
-    if (!book) {
-      throw new Error(`Книгу з ID ${bookId} не знайдено.`);
-    }
-
-    // 2. Парсимо рядок з віршами (напр. "16", "16-18")
-    const verseParts = versesStr.split('-').map(v => parseInt(v.trim(), 10));
-    let startVerse, endVerse;
-
-    if (verseParts.length === 1 && !isNaN(verseParts[0])) {
-      startVerse = endVerse = verseParts[0];
-    } else if (verseParts.length === 2 && !isNaN(verseParts[0]) && !isNaN(verseParts[1])) {
-      startVerse = Math.min(verseParts[0], verseParts[1]);
-      endVerse = Math.max(verseParts[0], verseParts[1]);
-    } else {
-      throw new Error(`Неправильний формат вірша: ${versesStr}`);
-    }
-
-    // 3. Отримуємо вірші з бази даних
-    // Припускаємо, що є таблиця 'verses' з колонками 'book_number', 'chapter', 'verse', 'text'
-    const verseQuery = db.prepare(`
-      SELECT verse, text 
-      FROM verses 
-      WHERE book_number = ? AND chapter = ? AND verse BETWEEN ? AND ?
-      ORDER BY verse ASC
-    `);
-    const verseRows = verseQuery.all(bookId, chapter, startVerse, endVerse);
-
-    if (verseRows.length === 0) {
-      return { reference: `${book.short_name} ${chapter}:${versesStr}`, text: '(Текст не знайдено)' };
-    }
-
-    // 4. Форматуємо результат
-    const reference = `${book.long_name} ${chapter}:${versesStr}`;
-    // Очищуємо текст від тегів і об'єднуємо вірші.
-    // Якщо обрано кілька віршів, кожен буде з нового рядка для кращої читабельності.
-    const fullText = verseRows.map(row => cleanVerseText(row.text)).join('\n');
-
-    return { reference, text: fullText };
+    return readVerseFromDb(db, bookId, chapter, versesStr);
   } catch (err) {
     console.error('Помилка при зчитуванні вірша з БД:', err);
     throw err; // Перекидаємо помилку
   }
+});
+
+// Команда на отримання того ж вірша з другого (паралельного) перекладу
+ipcMain.handle('get-secondary-verse-text', async (event, { bookId, chapter, versesStr }) => {
+  if (!secondaryDb) return null; // Паралельний переклад не активний
+  try {
+    const result = readVerseFromDb(secondaryDb, bookId, chapter, versesStr);
+    return { text: result.text, reference: result.reference, name: secondaryDbName };
+  } catch (err) {
+    console.error('Помилка при зчитуванні вірша з другого перекладу:', err);
+    return null;
+  }
+});
+
+// Команда для увімкнення/перемикання другого перекладу (null/'' — вимкнути)
+ipcMain.handle('set-secondary-translation', (event, dbName) => {
+  // Вимкнення паралельного перекладу
+  if (!dbName) {
+    if (secondaryDb && secondaryDb.open) secondaryDb.close();
+    secondaryDb = null;
+    secondaryDbName = '';
+    projectorSettings.secondaryTranslation = null;
+    saveSettings();
+    return { success: true };
+  }
+
+  // Якщо вже відкрито потрібний переклад — нічого не робимо
+  if (secondaryDbName === dbName && secondaryDb && secondaryDb.open) {
+    return { success: true, message: `Другий переклад ${dbName} вже активний.` };
+  }
+
+  const dbPath = getTranslationDbPath(dbName);
+  if (!dbPath) {
+    return { success: false, message: `Файл перекладу ${dbName} не знайдено.` };
+  }
+
+  try {
+    if (secondaryDb && secondaryDb.open) secondaryDb.close();
+    secondaryDb = new Database(dbPath, { readonly: true, fileMustExist: true });
+    secondaryDbName = dbName;
+    projectorSettings.secondaryTranslation = dbName;
+    saveSettings();
+    console.log(`Другий переклад переключено на ${dbName}`);
+    return { success: true, message: `Другий переклад: ${dbName}` };
+  } catch (err) {
+    console.error(`Не вдалося відкрити другий переклад ${dbName}:`, err.message);
+    secondaryDb = null;
+    secondaryDbName = '';
+    return { success: false, message: `Помилка підключення до ${dbName}` };
+  }
+});
+
+// Пошук віршів за текстом
+ipcMain.handle('search-verses', async (event, { query }) => {
+  if (!db) throw new Error('Немає з\'єднання з базою даних.');
+
+  const words = query.trim().toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+  if (words.length === 0) return [];
+
+  // SQLite LOWER() does not handle Cyrillic, so we search for both
+  // the lowercase form (words in the middle of a sentence) and the
+  // capitalized form (proper nouns, sentence starts like "Бог").
+  const conditions = words.map(() => '(v.text LIKE ? OR v.text LIKE ?)').join(' AND ');
+  const params = [];
+  for (const w of words) {
+    params.push(`%${w}%`);
+    params.push(`%${w.charAt(0).toUpperCase() + w.slice(1)}%`);
+  }
+
+  const stmt = db.prepare(`
+    SELECT v.book_number as bookId, v.chapter, v.verse, v.text, b.short_name as shortName, b.long_name as longName
+    FROM verses v
+    JOIN books b ON b.book_number = v.book_number
+    WHERE ${conditions}
+    LIMIT 40
+  `);
+
+  return stmt.all(...params).map(row => ({ ...row, text: cleanVerseText(row.text) }));
 });
 
 // Обробка теми системи

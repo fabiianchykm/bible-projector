@@ -1,8 +1,8 @@
 {
   "name": "bible-projector",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "Програма для виводу місць з Біблії на проектор",
-  "main": "main.js", 
+  "main": "main.js",
   "scripts": {
     "start": "electron .",
     "postinstall": "electron-builder install-app-deps",
@@ -19,7 +19,9 @@
       {
         "from": "translations",
         "to": "translations",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "productName": "Bible Projector",
@@ -42,8 +44,9 @@
   "author": "Your Name or Company",
   "license": "ISC",
   "devDependencies": {
+    "electron": "^30.0.0",
     "electron-builder": "^26.8.1",
-    "electron": "^30.0.0"
+    "playwright-core": "^1.60.0"
   },
   "dependencies": {
     "better-sqlite3": "^11.1.0",
