@@ -97,90 +97,99 @@
 
             <div class="settings-body">
 
-                <div class="settings-section">
-                    <div class="settings-section-label">Проектор</div>
+                <details class="settings-section" open>
+                    <summary class="settings-section-label">Проектор</summary>
+                    <div class="settings-section-body">
+                        <div class="setting-row">
+                            <span>Колір фону</span>
+                            <div class="color-swatch-wrap">
+                                <input type="color" id="projectorBgColor" value="#000000">
+                            </div>
+                        </div>
 
-                    <div class="setting-row">
-                        <span>Колір фону</span>
-                        <div class="color-swatch-wrap">
-                            <input type="color" id="projectorBgColor" value="#000000">
+                        <div class="setting-row">
+                            <span>Фонове зображення</span>
+                            <div class="button-group">
+                                <button id="selectBgImageBtn" class="btn-sm">Обрати</button>
+                                <button id="removeBgImageBtn" class="btn-sm btn-sm-ghost">Скинути</button>
+                            </div>
+                        </div>
+                        <div id="bgImageName" class="setting-info-text"></div>
+                    </div>
+                </details>
+
+                <details class="settings-section">
+                    <summary class="settings-section-label">Паралельний переклад</summary>
+                    <div class="settings-section-body">
+                        <div class="setting-row">
+                            <span>Два переклади одночасно</span>
+                            <label class="toggle">
+                                <input type="checkbox" id="parallelModeToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-row" id="secondaryTranslationRow" style="display: none;">
+                            <span>Другий переклад</span>
+                            <div class="select-wrapper">
+                                <select id="secondaryTranslationSelect"></select>
+                            </div>
+                        </div>
+                        <div class="setting-info-text">Один переклад показується зверху, другий — знизу.</div>
+                    </div>
+                </details>
+
+                <details class="settings-section">
+                    <summary class="settings-section-label">Кольори категорій</summary>
+                    <div class="settings-section-body">
+                        <div class="category-color-grid">
+                            <div class="color-chip"><input type="color" id="color-pentateuch"><span>П'ятикнижжя</span></div>
+                            <div class="color-chip"><input type="color" id="color-gospels"><span>Євангелії</span></div>
+                            <div class="color-chip"><input type="color" id="color-historical"><span>Історичні</span></div>
+                            <div class="color-chip"><input type="color" id="color-acts"><span>Дії Апостолів</span></div>
+                            <div class="color-chip"><input type="color" id="color-poetic"><span>Поетичні</span></div>
+                            <div class="color-chip"><input type="color" id="color-epistles"><span>Послання</span></div>
+                            <div class="color-chip"><input type="color" id="color-prophetic"><span>Пророчі</span></div>
+                            <div class="color-chip"><input type="color" id="color-revelation"><span>Об'явлення</span></div>
                         </div>
                     </div>
+                </details>
 
-                    <div class="setting-row">
-                        <span>Фонове зображення</span>
-                        <div class="button-group">
-                            <button id="selectBgImageBtn" class="btn-sm">Обрати</button>
-                            <button id="removeBgImageBtn" class="btn-sm btn-sm-ghost">Скинути</button>
+                <details class="settings-section">
+                    <summary class="settings-section-label">Інтерфейс</summary>
+                    <div class="settings-section-body">
+                        <div class="setting-row">
+                            <span>Повна назва над скороченням</span>
+                            <label class="toggle">
+                                <input type="checkbox" id="showFullBookNameToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-row">
+                            <span>Тема</span>
+                            <div class="select-wrapper">
+                                <select id="themeSelect">
+                                    <option value="system">Як у системі</option>
+                                    <option value="light">Світла</option>
+                                    <option value="dark">Темна</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                    <div id="bgImageName" class="setting-info-text"></div>
-                </div>
+                </details>
 
-                <div class="settings-section">
-                    <div class="settings-section-label">Паралельний переклад</div>
-                    <div class="setting-row">
-                        <span>Два переклади одночасно</span>
-                        <label class="toggle">
-                            <input type="checkbox" id="parallelModeToggle">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-row" id="secondaryTranslationRow" style="display: none;">
-                        <span>Другий переклад</span>
-                        <div class="select-wrapper">
-                            <select id="secondaryTranslationSelect"></select>
+                <details class="settings-section settings-section--last">
+                    <summary class="settings-section-label">Оновлення <span class="settings-label-hint">v<span id="appVersion">—</span></span></summary>
+                    <div class="settings-section-body">
+                        <div class="setting-row">
+                            <span>Версія: <span id="appVersionRow">—</span></span>
+                            <div class="button-group">
+                                <button id="checkUpdatesBtn" class="btn-sm">Перевірити оновлення</button>
+                                <button id="installUpdateBtn" class="btn-sm" style="display: none;">Перезапустити й оновити</button>
+                            </div>
                         </div>
+                        <div id="updateStatusText" class="setting-info-text"></div>
                     </div>
-                    <div class="setting-info-text">Один переклад показується зверху, другий — знизу.</div>
-                </div>
-
-                <div class="settings-section">
-                    <div class="settings-section-label">Кольори категорій</div>
-                    <div class="category-color-grid">
-                        <div class="color-chip"><input type="color" id="color-pentateuch"><span>П'ятикнижжя</span></div>
-                        <div class="color-chip"><input type="color" id="color-gospels"><span>Євангелії</span></div>
-                        <div class="color-chip"><input type="color" id="color-historical"><span>Історичні</span></div>
-                        <div class="color-chip"><input type="color" id="color-acts"><span>Дії Апостолів</span></div>
-                        <div class="color-chip"><input type="color" id="color-poetic"><span>Поетичні</span></div>
-                        <div class="color-chip"><input type="color" id="color-epistles"><span>Послання</span></div>
-                        <div class="color-chip"><input type="color" id="color-prophetic"><span>Пророчі</span></div>
-                        <div class="color-chip"><input type="color" id="color-revelation"><span>Об'явлення</span></div>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <div class="settings-section-label">Інтерфейс</div>
-                    <div class="setting-row">
-                        <span>Повна назва над скороченням</span>
-                        <label class="toggle">
-                            <input type="checkbox" id="showFullBookNameToggle">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-row">
-                        <span>Тема</span>
-                        <div class="select-wrapper">
-                            <select id="themeSelect">
-                                <option value="system">Як у системі</option>
-                                <option value="light">Світла</option>
-                                <option value="dark">Темна</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-section settings-section--last">
-                    <div class="settings-section-label">Оновлення</div>
-                    <div class="setting-row">
-                        <span>Версія: <span id="appVersion">—</span></span>
-                        <div class="button-group">
-                            <button id="checkUpdatesBtn" class="btn-sm">Перевірити оновлення</button>
-                            <button id="installUpdateBtn" class="btn-sm" style="display: none;">Перезапустити й оновити</button>
-                        </div>
-                    </div>
-                    <div id="updateStatusText" class="setting-info-text"></div>
-                </div>
+                </details>
 
             </div>
         </div>
@@ -1395,8 +1404,11 @@
         const installUpdateBtn = document.getElementById('installUpdateBtn');
         const updateStatusText = document.getElementById('updateStatusText');
 
-        // Показуємо поточну версію програми
-        window.electronAPI.getAppVersion().then(v => { appVersionSpan.textContent = v; });
+        // Показуємо поточну версію програми (у заголовку секції та в рядку)
+        window.electronAPI.getAppVersion().then(v => {
+            appVersionSpan.textContent = v;
+            document.getElementById('appVersionRow').textContent = v;
+        });
 
         // Ручна перевірка оновлень із налаштувань
         checkUpdatesBtn.addEventListener('click', async () => {
