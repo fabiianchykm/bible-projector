@@ -26,6 +26,7 @@ let projectorSettings = {
   projectorFont: 'Century Gothic', // Шрифт тексту на проекторі
   savedPlaces: [], // Заздалегідь збережені місця для показу одним кліком
   translationNames: {}, // Повні назви скачаних модулів: файл -> localName з каталогу
+  translationLangs: {}, // Мови скачаних модулів: файл -> код мови (ukr/rus/eng)
   remoteEnabled: false, // Пульт помічника: веб-сторінка у локальній мережі
   parallelMode: false, // Показувати два переклади одночасно
   secondaryTranslation: null, // Файл другого перекладу для паралельного показу
@@ -260,9 +261,11 @@ ipcMain.handle('download-module', async (event, moduleId) => {
       fs.rmSync(tmpPath, { force: true });
     }
 
-    // Запам'ятовуємо повну назву модуля для відображення у списках
+    // Запам'ятовуємо повну назву та мову модуля для відображення у списках
     if (!projectorSettings.translationNames) projectorSettings.translationNames = {};
+    if (!projectorSettings.translationLangs) projectorSettings.translationLangs = {};
     projectorSettings.translationNames[moduleFileName(mod)] = mod.localName || mod.name;
+    projectorSettings.translationLangs[moduleFileName(mod)] = mod.language || '';
     saveSettings();
 
     log.info(`Module downloaded: ${mod.id} -> ${targetPath}`);
@@ -683,30 +686,59 @@ ipcMain.on('show-verse', (event, verseData) => {
 });
 
 // Команда на отримання списку доступних перекладів
-// Повні назви вбудованих перекладів (localName з каталогу модулів)
-const BUNDLED_DISPLAY_NAMES = {
-  "CUV'23.SQLite3": 'БІБЛІЯ Сучасний переклад',
-  'FIL.SQLite3': 'Бiблiя. Книги Священного Писання Старого та Нового Завiту, 2004',
-  'HOM.SQLite3': 'Святе Письмо, Переклад Івана Хоменка, 1963',
-  'RSTB.SQLite3': 'Библия в русском переводе с приложениями ("Брюссельская Библия"), 1973',
-  'TUR.SQLite3': 'Українська Біблія LXX УБТ Рафаїла Турконяка (2011)',
-  'UBD96.SQLite3': 'Свята Біблія українською мовою, Університет Боба Джонса 1996',
-  "UBIO'62.SQLite3": 'Біблія в пер. Івана Огієнка, 1962',
-  "UBIO'88.SQLite3": 'Біблія в пер. Івана Огієнка, 1988',
-  'UKRK.SQLite3': 'Біблія, Куліш',
-  "МСЦ'22.SQLite3": 'МСЦ, Новий переклад, 2022'
+// Повні назви та мови вбудованих перекладів (localName з каталогу модулів)
+const BUNDLED_TRANSLATION_META = {
+  "CUV'23.SQLite3": { name: 'БІБЛІЯ Сучасний переклад', lang: 'ukr' },
+  'FIL.SQLite3': { name: 'Бiблiя. Книги Священного Писання Старого та Нового Завiту, 2004', lang: 'ukr' },
+  'HOM.SQLite3': { name: 'Святе Письмо, Переклад Івана Хоменка, 1963', lang: 'ukr' },
+  'RSTB.SQLite3': { name: 'Библия в русском переводе с приложениями ("Брюссельская Библия"), 1973', lang: 'rus' },
+  'TUR.SQLite3': { name: 'Українська Біблія LXX УБТ Рафаїла Турконяка (2011)', lang: 'ukr' },
+  'UBD96.SQLite3': { name: 'Свята Біблія українською мовою, Університет Боба Джонса 1996', lang: 'ukr' },
+  "UBIO'62.SQLite3": { name: 'Біблія в пер. Івана Огієнка, 1962', lang: 'ukr' },
+  "UBIO'88.SQLite3": { name: 'Біблія в пер. Івана Огієнка, 1988', lang: 'ukr' },
+  'UKRK.SQLite3': { name: 'Біблія, Куліш', lang: 'ukr' },
+  "МСЦ'22.SQLite3": { name: 'МСЦ, Новий переклад, 2022', lang: 'ukr' }
 };
 
 // Повна назва перекладу для відображення у списках
 function translationDisplayName(file) {
+  const bundled = BUNDLED_TRANSLATION_META[file];
   const saved = (projectorSettings.translationNames || {})[file];
-  const name = BUNDLED_DISPLAY_NAMES[file] || saved || file.replace(/\.sqlite(3)?$/i, '');
+  const name = (bundled && bundled.name) || saved || file.replace(/\.sqlite(3)?$/i, '');
   return String(name).replace(/\s+/g, ' ').trim();
 }
 
+// Мова перекладу ('' — невідома, такі йдуть у кінець списку)
+function translationLanguage(file) {
+  const bundled = BUNDLED_TRANSLATION_META[file];
+  if (bundled && bundled.lang) return bundled.lang;
+  return (projectorSettings.translationLangs || {})[file] || '';
+}
+
+// Порядок мов у списку перекладів
+const TRANSLATION_LANG_ORDER = ['ukr', 'rus', 'eng'];
+
+// Поточний активний переклад (щоб інтерфейс показував саме його після старту)
+ipcMain.handle('get-current-translation', () => currentDbName);
+
 ipcMain.handle('get-translations', () => {
   try {
-    return getAllTranslations().map(file => ({ file, name: translationDisplayName(file) }));
+    const list = getAllTranslations().map(file => ({
+      file,
+      name: translationDisplayName(file),
+      lang: translationLanguage(file)
+    }));
+    list.sort((a, b) => {
+      const rank = (l) => {
+        if (!l) return 99; // невідома мова — в кінець
+        const i = TRANSLATION_LANG_ORDER.indexOf(l);
+        return i === -1 ? 50 : i;
+      };
+      return rank(a.lang) - rank(b.lang)
+        || a.lang.localeCompare(b.lang)
+        || a.name.localeCompare(b.name, 'uk');
+    });
+    return list;
   } catch (err) {
     console.error('Помилка під час отримання списку перекладів:', err);
     return [];

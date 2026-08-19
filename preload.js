@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onThemeUpdated: (callback) => ipcRenderer.on('theme-updated', (event, isDark) => callback(isDark)),
   getTheme: () => ipcRenderer.invoke('get-theme'),
   getTranslations: () => ipcRenderer.invoke('get-translations'),
+  getCurrentTranslation: () => ipcRenderer.invoke('get-current-translation'),
   switchTranslation: (dbName) => ipcRenderer.invoke('switch-translation', dbName),
   setSecondaryTranslation: (dbName) => ipcRenderer.invoke('set-secondary-translation', dbName),
   getSecondaryVerseText: (params) => ipcRenderer.invoke('get-secondary-verse-text', params),

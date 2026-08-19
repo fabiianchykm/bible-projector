@@ -314,6 +314,7 @@
                 nowShowing: 'зараз показується',
                 downloadModuleError: 'Не вдалося завантажити модуль: {msg}',
                 langNames: { ukr: 'Українська', rus: 'Російська', eng: 'Англійська' },
+                langOther: 'Інші',
                 savedPlacesTitle: 'Збережені місця',
                 savedPlacesLabel: 'Збережені місця',
                 addCurrentPlace: '+ Додати показане місце',
@@ -390,6 +391,7 @@
                 nowShowing: 'now showing',
                 downloadModuleError: 'Failed to download module: {msg}',
                 langNames: { ukr: 'Ukrainian', rus: 'Russian', eng: 'English' },
+                langOther: 'Other',
                 savedPlacesTitle: 'Saved places',
                 savedPlacesLabel: 'Saved places',
                 addCurrentPlace: '+ Add shown place',
@@ -482,6 +484,7 @@
         let gridNavBuffer = '';   // Набрані цифри для навігації по сітці
         let gridNavTimeout = null; // Таймер скидання набраного числа
         let currentViewName = 'books';     // Поточний екран навігації (books/chapters/verses)
+        let translationsList = [];         // Список перекладів {file, name, lang} з головного процесу
         let parallelMode = false;          // Чи показувати два переклади одночасно
         let secondaryTranslation = null;   // Файл другого перекладу
         let lastShownVerse = null;         // Останній показаний вірш (для оновлення при зміні режиму)
@@ -735,13 +738,23 @@
         const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
         const DOWNLOAD_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
 
-        // Скачані переклади: клік перемикає активний переклад
+        // Скачані переклади: згруповані за мовою, клік перемикає активний переклад
         function renderInstalledModules() {
             installedModulesList.innerHTML = '';
-            const options = [...translationSelect.options];
-            installedModulesLabel.textContent = `${t('downloaded')} · ${options.length}`;
-            options.forEach(option => {
-                const isCurrent = option.value === translationSelect.value;
+            installedModulesLabel.textContent = `${t('downloaded')} · ${translationsList.length}`;
+
+            let lastLang = null;
+            translationsList.forEach(tr => {
+                // Підзаголовок мови (список уже відсортований за мовами)
+                if (tr.lang !== lastLang) {
+                    lastLang = tr.lang;
+                    const langLabel = document.createElement('div');
+                    langLabel.className = 'modules-lang-label';
+                    langLabel.textContent = tr.lang ? languageName(tr.lang) : t('langOther');
+                    installedModulesList.appendChild(langLabel);
+                }
+
+                const isCurrent = tr.file === translationSelect.value;
 
                 const row = document.createElement('div');
                 row.className = 'module-item module-item--installed';
@@ -755,7 +768,8 @@
                 info.className = 'module-info';
                 const name = document.createElement('div');
                 name.className = 'module-name';
-                name.textContent = option.textContent;
+                name.textContent = tr.name;
+                name.title = tr.name;
                 info.appendChild(name);
                 if (isCurrent) {
                     const meta = document.createElement('div');
@@ -768,8 +782,8 @@
                 row.appendChild(info);
                 row.title = isCurrent ? t('currentTranslation') : t('clickToSwitch');
                 row.onclick = () => {
-                    if (translationSelect.value !== option.value) {
-                        translationSelect.value = option.value;
+                    if (translationSelect.value !== tr.file) {
+                        translationSelect.value = tr.file;
                         translationSelect.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                     updateTranslationPickerLabel();
@@ -885,6 +899,7 @@
             const primary = translationSelect.value;
             const secondary = secondaryTranslationSelect.value;
             const translations = await window.electronAPI.getTranslations();
+            translationsList = translations;
             translationSelect.innerHTML = '';
             secondaryTranslationSelect.innerHTML = '';
             translations.forEach(tr => {
@@ -1132,6 +1147,7 @@
         async function loadTranslations() {
             try {
                 const translations = await window.electronAPI.getTranslations();
+                translationsList = translations;
                 translationSelect.innerHTML = '';
                 secondaryTranslationSelect.innerHTML = '';
                 translations.forEach(tr => {
@@ -1144,6 +1160,10 @@
                     const option2 = option.cloneNode(true);
                     secondaryTranslationSelect.appendChild(option2);
                 });
+
+                // Синхронізуємо вибір із перекладом, який реально відкрито в головному процесі
+                const current = await window.electronAPI.getCurrentTranslation();
+                if (current) translationSelect.value = current;
 
                 // Відновлюємо вибір другого перекладу зі збережених налаштувань
                 if (secondaryTranslation) {
