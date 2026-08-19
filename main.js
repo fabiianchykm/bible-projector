@@ -25,6 +25,7 @@ let projectorSettings = {
   language: 'uk', // Мова інтерфейсу: 'uk' | 'en'
   projectorFont: 'Century Gothic', // Шрифт тексту на проекторі
   savedPlaces: [], // Заздалегідь збережені місця для показу одним кліком
+  translationNames: {}, // Повні назви скачаних модулів: файл -> localName з каталогу
   remoteEnabled: false, // Пульт помічника: веб-сторінка у локальній мережі
   parallelMode: false, // Показувати два переклади одночасно
   secondaryTranslation: null, // Файл другого перекладу для паралельного показу
@@ -258,6 +259,11 @@ ipcMain.handle('download-module', async (event, moduleId) => {
     } finally {
       fs.rmSync(tmpPath, { force: true });
     }
+
+    // Запам'ятовуємо повну назву модуля для відображення у списках
+    if (!projectorSettings.translationNames) projectorSettings.translationNames = {};
+    projectorSettings.translationNames[moduleFileName(mod)] = mod.localName || mod.name;
+    saveSettings();
 
     log.info(`Module downloaded: ${mod.id} -> ${targetPath}`);
     return { success: true, fileName: moduleFileName(mod) };
@@ -677,9 +683,30 @@ ipcMain.on('show-verse', (event, verseData) => {
 });
 
 // Команда на отримання списку доступних перекладів
+// Повні назви вбудованих перекладів (localName з каталогу модулів)
+const BUNDLED_DISPLAY_NAMES = {
+  "CUV'23.SQLite3": 'БІБЛІЯ Сучасний переклад',
+  'FIL.SQLite3': 'Бiблiя. Книги Священного Писання Старого та Нового Завiту, 2004',
+  'HOM.SQLite3': 'Святе Письмо, Переклад Івана Хоменка, 1963',
+  'RSTB.SQLite3': 'Библия в русском переводе с приложениями ("Брюссельская Библия"), 1973',
+  'TUR.SQLite3': 'Українська Біблія LXX УБТ Рафаїла Турконяка (2011)',
+  'UBD96.SQLite3': 'Свята Біблія українською мовою, Університет Боба Джонса 1996',
+  "UBIO'62.SQLite3": 'Біблія в пер. Івана Огієнка, 1962',
+  "UBIO'88.SQLite3": 'Біблія в пер. Івана Огієнка, 1988',
+  'UKRK.SQLite3': 'Біблія, Куліш',
+  "МСЦ'22.SQLite3": 'МСЦ, Новий переклад, 2022'
+};
+
+// Повна назва перекладу для відображення у списках
+function translationDisplayName(file) {
+  const saved = (projectorSettings.translationNames || {})[file];
+  const name = BUNDLED_DISPLAY_NAMES[file] || saved || file.replace(/\.sqlite(3)?$/i, '');
+  return String(name).replace(/\s+/g, ' ').trim();
+}
+
 ipcMain.handle('get-translations', () => {
   try {
-    return getAllTranslations();
+    return getAllTranslations().map(file => ({ file, name: translationDisplayName(file) }));
   } catch (err) {
     console.error('Помилка під час отримання списку перекладів:', err);
     return [];

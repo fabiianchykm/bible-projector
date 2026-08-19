@@ -887,10 +887,10 @@
             const translations = await window.electronAPI.getTranslations();
             translationSelect.innerHTML = '';
             secondaryTranslationSelect.innerHTML = '';
-            translations.forEach(name => {
+            translations.forEach(tr => {
                 const option = document.createElement('option');
-                option.value = name;
-                option.textContent = name.replace(/\.sqlite(3)?$/i, '');
+                option.value = tr.file;
+                option.textContent = tr.name;
                 translationSelect.appendChild(option);
                 secondaryTranslationSelect.appendChild(option.cloneNode(true));
             });
@@ -1134,10 +1134,10 @@
                 const translations = await window.electronAPI.getTranslations();
                 translationSelect.innerHTML = '';
                 secondaryTranslationSelect.innerHTML = '';
-                translations.forEach(name => {
+                translations.forEach(tr => {
                     const option = document.createElement('option');
-                    option.value = name;
-                    option.textContent = name.replace(/\.sqlite(3)?$/i, '');
+                    option.value = tr.file;
+                    option.textContent = tr.name;
                     translationSelect.appendChild(option);
 
                     // Дублюємо у список другого перекладу
