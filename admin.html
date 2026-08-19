@@ -78,12 +78,12 @@
             <button id="restart-app-btn" style="display: none;" data-i18n="restart">Перезапустити</button>
         </div>
 
-        <div class="navigation-header">
+        <div class="navigation-header navigation-header--empty">
             <button id="backBtn" style="display: none;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 <span data-i18n="back">Назад</span>
             </button>
-            <h2 id="currentSelectionHeader">Оберіть книгу</h2>
+            <h2 id="currentSelectionHeader"></h2>
             <span id="gridNavBadge" class="grid-nav-badge" style="display: none;"></span>
         </div>
 
@@ -1797,9 +1797,12 @@
             versesContainer.style.display = 'none';
             backBtn.style.display = 'none';
 
+            const navHeader = document.querySelector('.navigation-header');
+            navHeader.classList.toggle('navigation-header--empty', viewName === 'books');
+
             if (viewName === 'books') {
                 booksContainer.style.display = 'grid';
-                currentSelectionHeader.innerHTML = `<span class="nav-instruction">${t('chooseBook')}</span>`;
+                currentSelectionHeader.innerHTML = '';
                 selectedBook = null;
                 selectedChapter = null;
             } else if (viewName === 'chapters') {

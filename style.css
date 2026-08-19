@@ -1146,6 +1146,12 @@ details[open] > summary.settings-section-label::after {
     min-height: 44px;
 }
 
+/* На екрані книг заголовок порожній — не займаємо місце */
+.navigation-header--empty {
+    min-height: 0;
+    padding: 0;
+}
+
 .navigation-header h2 {
     font-size: 1.02rem;
     font-weight: 600;
