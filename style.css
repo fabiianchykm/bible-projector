@@ -676,9 +676,9 @@ details[open] > summary.settings-section-label::after {
 /* Картка пропозиції від помічника — плаваюче повідомлення поверх контенту */
 .proposal-card {
     position: fixed;
-    top: 14px;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     width: min(560px, calc(100vw - 32px));
     z-index: 600;
     display: flex;
@@ -693,8 +693,8 @@ details[open] > summary.settings-section-label::after {
 }
 
 @keyframes proposal-slide-in {
-    from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
-    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 .proposal-info {
