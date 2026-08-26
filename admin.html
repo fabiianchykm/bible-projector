@@ -1004,10 +1004,21 @@
                 num.className = 'saved-place-num';
                 num.textContent = (index + 1) + '.';
 
+                const info = document.createElement('div');
+                info.className = 'saved-place-info';
+
                 const label = document.createElement('span');
                 label.className = 'saved-place-label';
                 label.textContent = place.label;
                 label.title = place.label;
+                info.appendChild(label);
+
+                // Текст місця Писання (2 рядки з трикрапкою)
+                const text = document.createElement('div');
+                text.className = 'saved-place-text';
+                text.textContent = place.text || '…';
+                info.appendChild(text);
+                if (!place.text) fillSavedPlaceText(place, text);
 
                 const delBtn = document.createElement('button');
                 delBtn.className = 'saved-place-del';
@@ -1023,24 +1034,46 @@
                 };
 
                 row.appendChild(num);
-                row.appendChild(label);
+                row.appendChild(info);
                 row.appendChild(delBtn);
                 row.onclick = () => openSavedPlace(place, index);
                 savedPlacesList.appendChild(row);
             });
         }
 
-        // Додає місце в закладки; повертає true, якщо його там ще не було
-        function addSavedPlace(bookId, chapter, versesStr, shortName) {
+        // Текст місця Писання для закладки (з поточного перекладу)
+        async function fetchPlaceText(bookId, chapter, versesStr) {
+            try {
+                const result = await window.electronAPI.getVerseText({ bookId, chapter, versesStr: String(versesStr) });
+                return String(result.text || '').replace(/\s+/g, ' ').trim();
+            } catch (e) {
+                console.error('Не вдалося отримати текст закладки:', e);
+                return '';
+            }
+        }
+
+        // Дозаповнює текст для закладок, збережених без нього (старі версії)
+        async function fillSavedPlaceText(place, el) {
+            const text = await fetchPlaceText(place.bookId, place.chapter, place.versesStr);
+            if (!text) return;
+            place.text = text;
+            if (el) el.textContent = text;
+            persistSavedPlaces();
+        }
+
+        // Додає місце в закладки; повертає added=true, якщо його там ще не було
+        async function addSavedPlace(bookId, chapter, versesStr, shortName) {
             const item = {
                 bookId,
                 chapter,
                 versesStr: String(versesStr),
-                label: `${shortName} ${chapter}:${versesStr}`
+                label: `${shortName} ${chapter}:${versesStr}`,
+                text: ''
             };
             const exists = savedPlaces.some(p =>
                 p.bookId == item.bookId && p.chapter == item.chapter && p.versesStr === item.versesStr);
             if (!exists) {
+                item.text = await fetchPlaceText(bookId, chapter, versesStr);
                 savedPlaces.push(item);
                 persistSavedPlaces();
                 if (isSavedPlacesOpen()) renderSavedPlaces();
@@ -1095,10 +1128,10 @@
             btn.className = 'verse-context-menu__item';
             if (existingIndex === -1) {
                 btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span>${t('ctxAddToPlaces')}</span>`;
-                btn.onclick = () => {
-                    const result = addSavedPlace(bookId, chapter, verseNum, shortName);
-                    showToast(t(result.added ? 'addedToPlaces' : 'alreadyInPlaces', { ref: result.label }));
+                btn.onclick = async () => {
                     hideVerseContextMenu();
+                    const result = await addSavedPlace(bookId, chapter, verseNum, shortName);
+                    showToast(t(result.added ? 'addedToPlaces' : 'alreadyInPlaces', { ref: result.label }));
                 };
             } else {
                 btn.classList.add('verse-context-menu__item--danger');
@@ -1129,12 +1162,12 @@
         window.addEventListener('blur', hideVerseContextMenu);
         window.addEventListener('resize', hideVerseContextMenu);
 
-        addCurrentPlaceBtn.addEventListener('click', () => {
+        addCurrentPlaceBtn.addEventListener('click', async () => {
             if (!lastShownVerse || !selectedBook || !selectedChapter) {
                 alert(t('nothingShown'));
                 return;
             }
-            addSavedPlace(selectedBook.id, selectedChapter, lastShownVerse, selectedBook.short_name);
+            await addSavedPlace(selectedBook.id, selectedChapter, lastShownVerse, selectedBook.short_name);
             renderSavedPlaces();
         });
 
