@@ -318,11 +318,14 @@
                 savedPlacesTitle: 'Збережені місця',
                 savedPlacesLabel: 'Збережені місця',
                 addCurrentPlace: '+ Додати показане місце',
-                noSavedPlaces: 'Поки нічого не збережено. Покажіть вірш на проекторі та натисніть «Додати».',
+                noSavedPlaces: 'Поки нічого не збережено. Натисніть правою кнопкою на вірш → «Додати в закладки», або покажіть вірш на проекторі та натисніть «Додати».',
                 nothingShown: 'Спочатку покажіть вірш на проекторі.',
                 deletePlace: 'Видалити',
                 addedToPlaces: 'Додано в закладки: {ref}',
                 alreadyInPlaces: 'Вже в закладках: {ref}',
+                removedFromPlaces: 'Видалено із закладок: {ref}',
+                ctxAddToPlaces: 'Додати в закладки',
+                ctxRemoveFromPlaces: 'Видалити із закладок',
                 sectionRemote: 'Пульт помічника',
                 remoteToggle: 'Дозволити пропозиції з телефона',
                 remoteUrlInfo: 'Відкрийте на телефоні (та сама Wi-Fi мережа):',
@@ -395,11 +398,14 @@
                 savedPlacesTitle: 'Saved places',
                 savedPlacesLabel: 'Saved places',
                 addCurrentPlace: '+ Add shown place',
-                noSavedPlaces: 'Nothing saved yet. Show a verse on the projector and press "Add".',
+                noSavedPlaces: 'Nothing saved yet. Right-click a verse → "Add to bookmarks", or show a verse on the projector and press "Add".',
                 nothingShown: 'Show a verse on the projector first.',
                 deletePlace: 'Delete',
                 addedToPlaces: 'Added to bookmarks: {ref}',
                 alreadyInPlaces: 'Already bookmarked: {ref}',
+                removedFromPlaces: 'Removed from bookmarks: {ref}',
+                ctxAddToPlaces: 'Add to bookmarks',
+                ctxRemoveFromPlaces: 'Remove from bookmarks',
                 sectionRemote: 'Helper remote',
                 remoteToggle: 'Allow proposals from a phone',
                 remoteUrlInfo: 'Open on the phone (same Wi-Fi network):',
@@ -1042,6 +1048,87 @@
             return { added: !exists, label: item.label };
         }
 
+        // Чи є місце в закладках (індекс або -1)
+        function findSavedPlaceIndex(bookId, chapter, versesStr) {
+            return savedPlaces.findIndex(p =>
+                p.bookId == bookId && p.chapter == chapter && p.versesStr === String(versesStr));
+        }
+
+        function removeSavedPlaceAt(index) {
+            savedPlaces.splice(index, 1);
+            if (lastOpenedPlaceIndex === index) lastOpenedPlaceIndex = -1;
+            else if (lastOpenedPlaceIndex > index) lastOpenedPlaceIndex--;
+            persistSavedPlaces();
+            if (isSavedPlacesOpen()) renderSavedPlaces();
+        }
+
+        // --- Контекстне меню вірша (правий клік) ---
+        const verseContextMenu = document.createElement('div');
+        verseContextMenu.id = 'verseContextMenu';
+        verseContextMenu.className = 'verse-context-menu';
+        verseContextMenu.style.display = 'none';
+        document.body.appendChild(verseContextMenu);
+
+        function hideVerseContextMenu() {
+            verseContextMenu.style.display = 'none';
+        }
+
+        function isVerseContextMenuOpen() {
+            return verseContextMenu.style.display !== 'none';
+        }
+
+        function showVerseContextMenu(event, verseNum) {
+            if (!selectedBook || !selectedChapter) return;
+            const bookId = selectedBook.id;
+            const chapter = selectedChapter;
+            const shortName = selectedBook.short_name;
+            const label = `${shortName} ${chapter}:${verseNum}`;
+            const existingIndex = findSavedPlaceIndex(bookId, chapter, verseNum);
+
+            verseContextMenu.innerHTML = '';
+            const ref = document.createElement('div');
+            ref.className = 'verse-context-menu__ref';
+            ref.textContent = label;
+            verseContextMenu.appendChild(ref);
+
+            const btn = document.createElement('button');
+            btn.className = 'verse-context-menu__item';
+            if (existingIndex === -1) {
+                btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span>${t('ctxAddToPlaces')}</span>`;
+                btn.onclick = () => {
+                    const result = addSavedPlace(bookId, chapter, verseNum, shortName);
+                    showToast(t(result.added ? 'addedToPlaces' : 'alreadyInPlaces', { ref: result.label }));
+                    hideVerseContextMenu();
+                };
+            } else {
+                btn.classList.add('verse-context-menu__item--danger');
+                btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg><span>${t('ctxRemoveFromPlaces')}</span>`;
+                btn.onclick = () => {
+                    removeSavedPlaceAt(existingIndex);
+                    showToast(t('removedFromPlaces', { ref: label }));
+                    hideVerseContextMenu();
+                };
+            }
+            verseContextMenu.appendChild(btn);
+
+            // Показуємо біля курсора, не виходячи за межі вікна
+            verseContextMenu.style.display = 'block';
+            const rect = verseContextMenu.getBoundingClientRect();
+            const x = Math.min(event.clientX, window.innerWidth - rect.width - 8);
+            const y = Math.min(event.clientY, window.innerHeight - rect.height - 8);
+            verseContextMenu.style.left = Math.max(8, x) + 'px';
+            verseContextMenu.style.top = Math.max(8, y) + 'px';
+        }
+
+        document.addEventListener('click', (e) => {
+            if (isVerseContextMenuOpen() && !verseContextMenu.contains(e.target)) hideVerseContextMenu();
+        });
+        document.addEventListener('contextmenu', (e) => {
+            if (isVerseContextMenuOpen() && !e.target.closest('.verse-text-item')) hideVerseContextMenu();
+        });
+        window.addEventListener('blur', hideVerseContextMenu);
+        window.addEventListener('resize', hideVerseContextMenu);
+
         addCurrentPlaceBtn.addEventListener('click', () => {
             if (!lastShownVerse || !selectedBook || !selectedChapter) {
                 alert(t('nothingShown'));
@@ -1311,11 +1398,10 @@
                     verseItem.appendChild(closeVerseBtn);
 
                     verseItem.onclick = (event) => handleVerseClick(event, verse.verse);
-                    // Правий клік — додати вірш у закладки
+                    // Правий клік — контекстне меню з кнопкою «Додати в закладки»
                     verseItem.oncontextmenu = (event) => {
                         event.preventDefault();
-                        const result = addSavedPlace(selectedBook.id, selectedChapter, verse.verse, selectedBook.short_name);
-                        showToast(t(result.added ? 'addedToPlaces' : 'alreadyInPlaces', { ref: result.label }));
+                        showVerseContextMenu(event, verse.verse);
                     };
                     versesContainer.appendChild(verseItem);
                 });
@@ -1726,6 +1812,14 @@
             // Ігноруємо, якщо відкриті налаштування
             if (settingsOverlay.style.display !== 'none') {
                 return;
+            }
+            // Контекстне меню вірша: Escape закриває
+            if (isVerseContextMenuOpen()) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    hideVerseContextMenu();
+                    return;
+                }
             }
             // Якщо відкрита панель модулів — Escape закриває її, решту ігноруємо
             if (isModulesPanelOpen()) {
