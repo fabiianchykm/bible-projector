@@ -1321,8 +1321,7 @@ details[open] > summary.settings-section-label::after {
     border-radius: 10px;
     background-color: var(--book-item-bg);
     box-shadow: inset 0 0 0 1px var(--container-border);
-    transition: background-color 0.15s, color 0.15s, border-color 0.15s,
-                transform 0.12s, box-shadow 0.15s;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
     user-select: none; /* Забороняємо виділення тексту */
 }
 
@@ -1347,19 +1346,19 @@ details[open] > summary.settings-section-label::after {
     display: block;
 }
 
+/* Ефекти без зміни геометрії: transform на hover/active зміщував плитку
+   з-під курсора на її межі — hover мерехтів, а клік по краю не спрацьовував */
 .grid-item:hover {
     border-color: var(--primary-color);
-    transform: translateY(-1px);
     box-shadow: 0 3px 10px rgba(0,0,0,0.10);
 }
 
 .grid-item:active {
     /* Ефект натискання */
-    transform: scale(0.95);
     background-color: var(--book-item-active-bg);
     color: white;
     border-color: var(--book-item-active-border);
-    box-shadow: none;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.18);
 }
 
 .grid-item.selected {
@@ -1386,7 +1385,6 @@ details[open] > summary.settings-section-label::after {
     color: white;
     border-color: var(--book-item-active-border);
     box-shadow: 0 0 0 2px var(--primary-color);
-    transform: scale(1.06);
     z-index: 2;
 }
 
