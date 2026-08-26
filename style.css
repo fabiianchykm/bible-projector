@@ -108,6 +108,13 @@ button:hover {
     align-items: center;
     gap: 8px;
     min-width: 0;
+    flex: 1 1 0;
+}
+
+/* Підпис «Переклад» не показуємо — кнопка з назвою перекладу зрозуміла сама по собі,
+   а місце в рядку потрібне для повної назви */
+.translation-selector > label {
+    display: none;
 }
 
 .translation-selector label {
@@ -610,7 +617,9 @@ details[open] > summary.settings-section-label::after {
     color: var(--text-color);
     font-size: 13px;
     font-weight: 500;
-    max-width: 200px;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 520px;
     transition: border-color 0.15s;
 }
 
@@ -626,6 +635,28 @@ details[open] > summary.settings-section-label::after {
     min-width: 0;
 }
 
+/* Назва перекладу: повна назва обрізається, коротке позначення завжди видиме */
+#translationPickerLabel,
+.module-name {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+}
+
+.tr-name__full {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.tr-name__code {
+    flex-shrink: 0;
+    white-space: nowrap;
+    opacity: 0.75;
+}
+
 .translation-picker svg {
     flex-shrink: 0;
     opacity: 0.5;
@@ -635,7 +666,7 @@ details[open] > summary.settings-section-label::after {
     position: absolute;
     top: calc(100% + 8px);
     left: 0;
-    width: 330px;
+    width: min(520px, calc(100vw - 64px));
     max-height: 420px;
     overflow-y: auto;
     background: var(--container-bg);

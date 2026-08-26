@@ -27,6 +27,7 @@ let projectorSettings = {
   savedPlaces: [], // Заздалегідь збережені місця для показу одним кліком
   translationNames: {}, // Повні назви скачаних модулів: файл -> localName з каталогу
   translationLangs: {}, // Мови скачаних модулів: файл -> код мови (ukr/rus/eng)
+  translationCodes: {}, // Короткі позначення скачаних модулів: файл -> код (WEB, RSTB)
   remoteEnabled: false, // Пульт помічника: веб-сторінка у локальній мережі
   parallelMode: false, // Показувати два переклади одночасно
   secondaryTranslation: null, // Файл другого перекладу для паралельного показу
@@ -142,6 +143,37 @@ const BUNDLED_EQUIVALENTS = {
   'ukr-msc22': "МСЦ'22.SQLite3"
 };
 
+// Коротке позначення модуля з каталогу за його id: 'eng-web' -> 'WEB', 'ukr-msc22' -> 'MSC22'
+function moduleShortCode(mod) {
+  const id = String(mod.id || '');
+  const code = id.includes('-') ? id.slice(id.indexOf('-') + 1) : id;
+  return code.toUpperCase();
+}
+
+// Доповнює назви/мови/коди для вже скачаних модулів, у яких цих даних ще нема
+// (модулі, завантажені старішими версіями програми)
+function rememberInstalledModulesMeta(modules) {
+  const installed = new Set(getAllTranslations());
+  let changed = false;
+  for (const mod of modules) {
+    const file = moduleFileName(mod);
+    if (!installed.has(file)) continue;
+    if (!projectorSettings.translationNames) projectorSettings.translationNames = {};
+    if (!projectorSettings.translationLangs) projectorSettings.translationLangs = {};
+    if (!projectorSettings.translationCodes) projectorSettings.translationCodes = {};
+    if (!projectorSettings.translationNames[file]) {
+      projectorSettings.translationNames[file] = mod.localName || mod.name; changed = true;
+    }
+    if (!projectorSettings.translationLangs[file] && mod.language) {
+      projectorSettings.translationLangs[file] = mod.language; changed = true;
+    }
+    if (!projectorSettings.translationCodes[file]) {
+      projectorSettings.translationCodes[file] = moduleShortCode(mod); changed = true;
+    }
+  }
+  if (changed) saveSettings();
+}
+
 // Ім'я файлу, під яким модуль з каталогу зберігається у папці перекладів
 // (назва файлу без розширення показується користувачу у списку перекладів)
 function moduleFileName(mod) {
@@ -218,6 +250,7 @@ function convertModuleToMyBible(sourcePath, targetPath) {
 ipcMain.handle('get-modules-catalog', async () => {
   const modules = await fetchModulesCatalog();
   const installed = new Set(getAllTranslations().map(f => f.toLowerCase()));
+  rememberInstalledModulesMeta(modules);
   return modules.map(m => {
     const bundledName = BUNDLED_EQUIVALENTS[m.id];
     return {
@@ -264,8 +297,10 @@ ipcMain.handle('download-module', async (event, moduleId) => {
     // Запам'ятовуємо повну назву та мову модуля для відображення у списках
     if (!projectorSettings.translationNames) projectorSettings.translationNames = {};
     if (!projectorSettings.translationLangs) projectorSettings.translationLangs = {};
+    if (!projectorSettings.translationCodes) projectorSettings.translationCodes = {};
     projectorSettings.translationNames[moduleFileName(mod)] = mod.localName || mod.name;
     projectorSettings.translationLangs[moduleFileName(mod)] = mod.language || '';
+    projectorSettings.translationCodes[moduleFileName(mod)] = moduleShortCode(mod);
     saveSettings();
 
     log.info(`Module downloaded: ${mod.id} -> ${targetPath}`);
@@ -700,12 +735,31 @@ const BUNDLED_TRANSLATION_META = {
   "МСЦ'22.SQLite3": { name: 'МСЦ, Новий переклад, 2022', lang: 'ukr' }
 };
 
-// Повна назва перекладу для відображення у списках
-function translationDisplayName(file) {
+// Повна назва перекладу (без скорочення)
+function translationFullName(file) {
   const bundled = BUNDLED_TRANSLATION_META[file];
   const saved = (projectorSettings.translationNames || {})[file];
   const name = (bundled && bundled.name) || saved || file.replace(/\.sqlite(3)?$/i, '');
   return String(name).replace(/\s+/g, ' ').trim();
+}
+
+// Коротке позначення перекладу: для вбудованих — назва файлу (CUV'23, UBIO'88),
+// для скачаних модулів — код з каталогу (WEB, RSTB тощо)
+function translationShortName(file) {
+  const base = file.replace(/\.sqlite(3)?$/i, '').trim();
+  if (BUNDLED_TRANSLATION_META[file]) return base;
+  const saved = (projectorSettings.translationCodes || {})[file];
+  if (saved) return saved;
+  // Файл названо повною назвою модуля — скорочення нема
+  return base === translationFullName(file) ? '' : base;
+}
+
+// Назва для списків: «Повна назва — CUV'23»
+function translationDisplayName(file) {
+  const full = translationFullName(file);
+  const short = translationShortName(file);
+  if (!short || short === full) return full;
+  return `${full} — ${short}`;
 }
 
 // Мова перекладу ('' — невідома, такі йдуть у кінець списку)
@@ -726,6 +780,8 @@ ipcMain.handle('get-translations', () => {
     const list = getAllTranslations().map(file => ({
       file,
       name: translationDisplayName(file),
+      fullName: translationFullName(file),
+      short: translationShortName(file),
       lang: translationLanguage(file)
     }));
     list.sort((a, b) => {
@@ -736,7 +792,7 @@ ipcMain.handle('get-translations', () => {
       };
       return rank(a.lang) - rank(b.lang)
         || a.lang.localeCompare(b.lang)
-        || a.name.localeCompare(b.name, 'uk');
+        || a.fullName.localeCompare(b.fullName, 'uk');
     });
     return list;
   } catch (err) {

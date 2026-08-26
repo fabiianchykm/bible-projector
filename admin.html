@@ -718,10 +718,28 @@
             if (isModulesPanelOpen()) closeModulesPanel(); else openModulesPanel();
         });
 
+        // Заповнює елемент назвою перекладу: повна назва (обрізається трикрапкою)
+        // і через тире коротке позначення (CUV'23), яке завжди лишається видимим
+        function fillTranslationName(el, tr) {
+            el.innerHTML = '';
+            const full = document.createElement('span');
+            full.className = 'tr-name__full';
+            full.textContent = tr.fullName || tr.name;
+            el.appendChild(full);
+            if (tr.short && tr.short !== tr.fullName) {
+                const code = document.createElement('span');
+                code.className = 'tr-name__code';
+                code.textContent = `— ${tr.short}`;
+                el.appendChild(code);
+            }
+            el.title = tr.name;
+        }
+
         // Показує назву поточного перекладу на кнопці
         function updateTranslationPickerLabel() {
-            const option = translationSelect.selectedOptions[0];
-            translationPickerLabel.textContent = option ? option.textContent : '—';
+            const tr = translationsList.find(t => t.file === translationSelect.value);
+            if (tr) fillTranslationName(translationPickerLabel, tr);
+            else translationPickerLabel.textContent = '—';
         }
 
         // Закриваємо панель при кліку поза нею
@@ -768,8 +786,7 @@
                 info.className = 'module-info';
                 const name = document.createElement('div');
                 name.className = 'module-name';
-                name.textContent = tr.name;
-                name.title = tr.name;
+                fillTranslationName(name, tr);
                 info.appendChild(name);
                 if (isCurrent) {
                     const meta = document.createElement('div');
@@ -801,6 +818,9 @@
                 const modules = await window.electronAPI.getModulesCatalog();
                 availableModulesCache = modules.filter(m => !m.installed);
                 renderAvailableModules();
+                // Каталог міг доповнити назви/коди раніше скачаних модулів — оновлюємо списки
+                await refreshTranslationLists();
+                renderInstalledModules();
             } catch (err) {
                 console.error('Не вдалося завантажити каталог модулів:', err);
                 availableModulesLabel.textContent = t('available');
