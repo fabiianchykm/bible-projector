@@ -38,7 +38,10 @@
                     <div id="savedPlacesPanel" class="modules-panel saved-places-panel" style="display: none;">
                         <div class="modules-group-label" id="savedPlacesLabel" data-i18n="savedPlacesLabel">Збережені місця</div>
                         <div id="savedPlacesList"></div>
-                        <button id="addCurrentPlaceBtn" class="btn-sm saved-add-btn" data-i18n="addCurrentPlace">+ Додати показане місце</button>
+                        <div class="saved-actions">
+                            <button id="addCurrentPlaceBtn" class="btn-sm saved-add-btn" data-i18n="addCurrentPlace">+ Додати показане місце</button>
+                            <button id="addDividerBtn" class="btn-sm saved-add-btn saved-add-divider" data-i18n="addDivider" data-i18n-title="addDividerTitle" title="Розділити список між проповідниками">+ Роздільник</button>
+                        </div>
                     </div>
                 </div>
                 <button id="openProjectorBtn">
@@ -318,6 +321,10 @@
                 savedPlacesTitle: 'Збережені місця',
                 savedPlacesLabel: 'Збережені місця',
                 addCurrentPlace: '+ Додати показане місце',
+                addDivider: '+ Роздільник',
+                addDividerTitle: 'Розділити список між проповідниками',
+                dividerPlaceholder: 'Підпис (напр., ім’я проповідника)',
+                deleteDivider: 'Видалити роздільник',
                 noSavedPlaces: 'Поки нічого не збережено. Натисніть правою кнопкою на вірш → «Додати в закладки», або покажіть вірш на проекторі та натисніть «Додати».',
                 nothingShown: 'Спочатку покажіть вірш на проекторі.',
                 deletePlace: 'Видалити',
@@ -398,6 +405,10 @@
                 savedPlacesTitle: 'Saved places',
                 savedPlacesLabel: 'Saved places',
                 addCurrentPlace: '+ Add shown place',
+                addDivider: '+ Divider',
+                addDividerTitle: 'Split the list between preachers',
+                dividerPlaceholder: 'Caption (e.g. preacher’s name)',
+                deleteDivider: 'Delete divider',
                 noSavedPlaces: 'Nothing saved yet. Right-click a verse → "Add to bookmarks", or show a verse on the projector and press "Add".',
                 nothingShown: 'Show a verse on the projector first.',
                 deletePlace: 'Delete',
@@ -995,14 +1006,20 @@
                 savedPlacesList.innerHTML = `<div class="modules-status">${t('noSavedPlaces')}</div>`;
                 return;
             }
+            let num = 0; // нумерація починається заново після кожного роздільника
             savedPlaces.forEach((place, index) => {
+                if (isDivider(place)) {
+                    savedPlacesList.appendChild(renderDividerRow(place, index));
+                    num = 0;
+                    return;
+                }
                 const row = document.createElement('div');
                 row.className = 'saved-place-item';
                 if (index === lastOpenedPlaceIndex) row.classList.add('active');
 
-                const num = document.createElement('span');
-                num.className = 'saved-place-num';
-                num.textContent = (index + 1) + '.';
+                const numEl = document.createElement('span');
+                numEl.className = 'saved-place-num';
+                numEl.textContent = (++num) + '.';
 
                 const info = document.createElement('div');
                 info.className = 'saved-place-info';
@@ -1033,12 +1050,90 @@
                     renderSavedPlaces();
                 };
 
-                row.appendChild(num);
+                row.appendChild(numEl);
                 row.appendChild(info);
                 row.appendChild(delBtn);
                 row.onclick = () => openSavedPlace(place, index);
                 savedPlacesList.appendChild(row);
             });
+        }
+
+        // --- Роздільники між проповідниками ---
+        function isDivider(place) {
+            return place && place.type === 'divider';
+        }
+
+        // Рядок-полоска з підписом; клік по підпису — редагування на місці
+        function renderDividerRow(place, index) {
+            const row = document.createElement('div');
+            row.className = 'saved-divider';
+
+            const label = document.createElement('span');
+            label.className = 'saved-divider-label' + (place.label ? '' : ' empty');
+            label.textContent = place.label || t('dividerPlaceholder');
+            label.title = t('dividerPlaceholder');
+            label.onclick = (e) => {
+                e.stopPropagation();
+                editDividerLabel(row, label, place);
+            };
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'saved-place-del';
+            delBtn.title = t('deleteDivider');
+            delBtn.innerHTML = '&times;';
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                removeSavedPlaceAt(index);
+                renderSavedPlaces();
+            };
+
+            row.appendChild(label);
+            row.appendChild(delBtn);
+            row.onclick = (e) => e.stopPropagation();
+            return row;
+        }
+
+        function editDividerLabel(row, label, place) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'saved-divider-input';
+            input.value = place.label || '';
+            input.placeholder = t('dividerPlaceholder');
+            input.maxLength = 40;
+            let done = false;
+            const finish = (save) => {
+                if (done) return;
+                done = true;
+                if (save) {
+                    place.label = input.value.trim();
+                    persistSavedPlaces();
+                }
+                renderSavedPlaces();
+            };
+            input.addEventListener('keydown', (e) => {
+                e.stopPropagation(); // щоб Escape/цифри не перехопив глобальний обробник
+                if (e.key === 'Enter') finish(true);
+                else if (e.key === 'Escape') finish(false);
+            });
+            input.addEventListener('blur', () => finish(true));
+            input.onclick = (e) => e.stopPropagation();
+            row.replaceChild(input, label);
+            input.focus();
+            input.select();
+        }
+
+        function addDivider() {
+            savedPlaces.push({ type: 'divider', label: '' });
+            persistSavedPlaces();
+            renderSavedPlaces();
+            // Одразу відкриваємо редагування підпису нового роздільника
+            const rows = savedPlacesList.querySelectorAll('.saved-divider');
+            const last = rows[rows.length - 1];
+            if (last) {
+                const label = last.querySelector('.saved-divider-label');
+                if (label) editDividerLabel(last, label, savedPlaces[savedPlaces.length - 1]);
+                last.scrollIntoView({ block: 'nearest' });
+            }
         }
 
         // Текст місця Писання для закладки (з поточного перекладу)
@@ -1177,8 +1272,14 @@
             renderSavedPlaces();
         });
 
+        document.getElementById('addDividerBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            addDivider();
+        });
+
         // Відкриває збережене місце: навігація до вірша + показ на проекторі
         async function openSavedPlace(place, index) {
+            if (isDivider(place)) return;
             const book = allBooks.find(b => b.id == place.bookId);
             if (!book) return;
             selectedBook = book;

@@ -940,9 +940,77 @@ details[open] > summary.settings-section-label::after {
     color: #dc3545;
 }
 
-.saved-add-btn {
-    width: 100%;
+.saved-actions {
+    display: flex;
+    gap: 6px;
     margin-top: 8px;
+}
+
+.saved-add-btn {
+    flex: 1;
+    min-width: 0;
+}
+
+.saved-add-divider {
+    flex: 0 0 auto;
+}
+
+/* Роздільник між проповідниками: полоска з підписом посередині */
+.saved-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px 6px 8px;
+    margin: 4px 0;
+    cursor: default;
+}
+
+.saved-divider::before,
+.saved-divider::after {
+    content: '';
+    flex: 1;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--primary-color);
+    opacity: 0.45;
+}
+
+.saved-divider-label {
+    flex: 0 1 auto;
+    max-width: 60%;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: var(--primary-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: text;
+}
+
+.saved-divider-label.empty {
+    text-transform: none;
+    font-weight: 400;
+    opacity: 0.5;
+    color: var(--text-color);
+}
+
+.saved-divider-input {
+    flex: 0 1 60%;
+    min-width: 120px;
+    padding: 3px 6px;
+    font-size: 13px;
+    border: 1px solid var(--primary-color);
+    border-radius: 5px;
+    background: var(--bg-color, transparent);
+    color: var(--text-color);
+    outline: none;
+}
+
+.saved-divider .saved-place-del {
+    flex: 0 0 auto;
+    order: 1; /* хрестик праворуч від полоски */
 }
 
 /* Збережені місця — простий нумерований список */
