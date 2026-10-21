@@ -1,12 +1,14 @@
 {
   "name": "bible-projector",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "description": "Програма для виводу місць з Біблії на проектор",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "postinstall": "electron-builder install-app-deps",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:mac": "rm -rf node_modules/better-sqlite3/build && electron-builder --mac",
+    "build:win": "rm -rf node_modules/better-sqlite3/build && electron-builder --win --x64 --arm64"
   },
   "build": {
     "appId": "com.yourname.bibleprojector",
