@@ -458,6 +458,36 @@ details[open] > summary.settings-section-label::after {
     flex: 1;
 }
 
+/* Поля розміру додаткового вікна (дюйми) */
+.size-inputs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.size-inputs input[type="number"] {
+    width: 72px;
+    padding: 5px 6px;
+    font-size: 13px;
+    text-align: center;
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.15));
+    border-radius: 6px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    outline: none;
+}
+
+.size-inputs input[type="number"]:focus {
+    border-color: var(--primary-color);
+}
+
+.size-inputs-x {
+    font-size: 13px;
+    color: var(--text-color);
+    opacity: 0.6;
+}
+
 /* Compact color swatch for bg color */
 .color-swatch-wrap {
     flex-shrink: 0;

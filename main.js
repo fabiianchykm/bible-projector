@@ -9,6 +9,7 @@ const log = require('electron-log');
 
 let adminWindow;
 let projectorWindow;
+let secondWindow; // Додаткове вікно показу із заданим розміром (друге вікно проектора)
 let db;
 // Другий (паралельний) переклад
 let secondaryDb;
@@ -31,6 +32,9 @@ let projectorSettings = {
   remoteEnabled: false, // Пульт помічника: веб-сторінка у локальній мережі
   parallelMode: false, // Показувати два переклади одночасно
   secondaryTranslation: null, // Файл другого перекладу для паралельного показу
+  secondWindowEnabled: false, // Додаткове вікно показу з фіксованим розміром
+  secondWindowWidthIn: 7.02, // Ширина додаткового вікна, дюйми
+  secondWindowHeightIn: 11.69, // Висота додаткового вікна, дюйми
   categoryColors: {
     pentateuch: '#FFDDC1',
     historical: '#CCE5FF',
@@ -462,6 +466,86 @@ function createProjectorWindow() {
   });
 }
 
+// Налаштування для рендерера проектора: шлях до фону перетворюємо на file:// URL
+function settingsForProjector(settings) {
+  const out = { ...settings };
+  if (out.backgroundImage) {
+    out.backgroundImage = url.format({ pathname: out.backgroundImage, protocol: 'file:', slashes: true });
+  }
+  return out;
+}
+
+// Усі відкриті вікна показу (основне + додаткове)
+function projectorWindows() {
+  return [projectorWindow, secondWindow].filter(w => w && !w.isDestroyed());
+}
+
+function sendToProjectors(channel, data) {
+  projectorWindows().forEach(w => w.webContents.send(channel, data));
+}
+
+// --- Додаткове вікно показу ---
+// Розмір задається в дюймах; переводимо в CSS-пікселі за 96 px/дюйм (стандарт для екранів)
+const SECOND_WINDOW_PPI = 96;
+
+function secondWindowSizePx() {
+  const w = parseFloat(projectorSettings.secondWindowWidthIn);
+  const h = parseFloat(projectorSettings.secondWindowHeightIn);
+  return {
+    width: Math.max(200, Math.round((isFinite(w) && w > 0 ? w : 7.02) * SECOND_WINDOW_PPI)),
+    height: Math.max(200, Math.round((isFinite(h) && h > 0 ? h : 11.69) * SECOND_WINDOW_PPI))
+  };
+}
+
+function createSecondWindow() {
+  const { width, height } = secondWindowSizePx();
+  secondWindow = new BrowserWindow({
+    width,
+    height,
+    useContentSize: true, // розмір стосується саме області показу, без рамки
+    resizable: false,
+    title: 'Bible Projector — додаткове вікно',
+    icon: path.join(__dirname, 'icon.png'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+  secondWindow.setMenuBarVisibility(false);
+  // projector.html має власний <title>; лишаємо назву вікна, щоб його було видно, що це додаткове
+  secondWindow.on('page-title-updated', (e) => e.preventDefault());
+  secondWindow.loadFile('projector.html')
+    .then(() => {
+      if (secondWindow && !secondWindow.isDestroyed()) {
+        secondWindow.webContents.send('settings-updated', settingsForProjector(projectorSettings));
+      }
+    })
+    .catch(err => console.error('[main] Не вдалося завантажити projector.html у додаткове вікно:', err));
+
+  secondWindow.on('closed', () => {
+    console.log('[main] Додаткове вікно показу закрито.');
+    secondWindow = null;
+  });
+}
+
+// Узгоджує додаткове вікно з налаштуваннями: відкриває, закриває або змінює розмір
+function syncSecondWindow() {
+  const enabled = projectorSettings.secondWindowEnabled === true;
+  const isOpen = secondWindow && !secondWindow.isDestroyed();
+  if (!enabled) {
+    if (isOpen) secondWindow.close();
+    return;
+  }
+  if (!isOpen) {
+    createSecondWindow();
+    return;
+  }
+  const { width, height } = secondWindowSizePx();
+  const [curW, curH] = secondWindow.getContentSize();
+  if (curW !== width || curH !== height) {
+    secondWindow.setContentSize(width, height);
+  }
+}
+
 // Запускаємо створення вікна, коли програма готова
 app.whenReady().then(() => {
   // Прибираємо дефолтне меню Electron і ставимо власну назву
@@ -576,6 +660,8 @@ ipcMain.on('open-projector', () => {
     console.log('[main] Вікно проектора вже існує, фокусуємось.');
     projectorWindow.focus();
   }
+  // Додаткове вікно, якщо ввімкнене в налаштуваннях
+  if (projectorSettings.secondWindowEnabled === true) syncSecondWindow();
 });
 
 // Команда на вибір фонового зображення
@@ -600,9 +686,7 @@ ipcMain.handle('select-background-image', async () => {
 
   // Конвертуємо шлях у URL для відправки у вікно
   const imageUrl = url.format({ pathname: imagePath, protocol: 'file:', slashes: true });
-  if (projectorWindow && !projectorWindow.isDestroyed()) {
-    projectorWindow.webContents.send('settings-updated', { backgroundImage: imageUrl });
-  }
+  sendToProjectors('settings-updated', { backgroundImage: imageUrl });
 
   return { path: imagePath }; // Повертаємо шлях для відображення в адмін-панелі
 });
@@ -699,8 +783,11 @@ ipcMain.on('update-projector-settings', (event, settings) => {
     });
   }
 
-  if (projectorWindow && !projectorWindow.isDestroyed()) {
-    projectorWindow.webContents.send('settings-updated', settingsForRenderer);
+  sendToProjectors('settings-updated', settingsForRenderer);
+
+  // Додаткове вікно: увімкнення/вимкнення або зміна розміру
+  if ('secondWindowEnabled' in settings || 'secondWindowWidthIn' in settings || 'secondWindowHeightIn' in settings) {
+    syncSecondWindow();
   }
 });
 
@@ -711,10 +798,10 @@ ipcMain.handle('get-settings', () => {
 
 // Команда на показ вірша
 ipcMain.on('show-verse', (event, verseData) => {
-  if (projectorWindow) {
+  if (projectorWindows().length) {
     console.log(`[main] Надсилаємо дані у проектор:`, verseData);
-    // Надсилаємо дані у вікно проектора
-    projectorWindow.webContents.send('display-verse', verseData);
+    // Надсилаємо дані в усі вікна показу (основне + додаткове)
+    sendToProjectors('display-verse', verseData);
   } else {
     console.log('[main] Помилка: спроба надіслати текст у закрите вікно проектора.');
   }

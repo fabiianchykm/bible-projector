@@ -159,6 +159,23 @@
                             </div>
                         </div>
                         <div id="bgImageName" class="setting-info-text"></div>
+
+                        <div class="setting-row">
+                            <span data-i18n="secondWindowToggle">Додаткове вікно показу</span>
+                            <label class="toggle">
+                                <input type="checkbox" id="secondWindowToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-row" id="secondWindowSizeRow" style="display: none;">
+                            <span data-i18n="secondWindowSize">Розмір, дюйми</span>
+                            <div class="size-inputs">
+                                <input type="number" id="secondWindowWidth" min="1" max="60" step="0.01" value="7.02" title="Ширина">
+                                <span class="size-inputs-x">×</span>
+                                <input type="number" id="secondWindowHeight" min="1" max="60" step="0.01" value="11.69" title="Висота">
+                            </div>
+                        </div>
+                        <div class="setting-info-text" id="secondWindowInfo" style="display: none;"></div>
                     </div>
                 </details>
 
@@ -289,6 +306,9 @@
                 bgImage: 'Фонове зображення',
                 choose: 'Обрати',
                 reset: 'Скинути',
+                secondWindowToggle: 'Додаткове вікно показу',
+                secondWindowSize: 'Розмір, дюйми',
+                secondWindowInfo: 'Окреме вікно з тим самим текстом, {w} × {h} px (96 px/дюйм). Відкривається разом із проектором.',
                 sectionParallel: 'Паралельний переклад',
                 parallelToggle: 'Два переклади одночасно',
                 secondTranslation: 'Другий переклад',
@@ -373,6 +393,9 @@
                 bgImage: 'Background image',
                 choose: 'Choose',
                 reset: 'Reset',
+                secondWindowToggle: 'Additional display window',
+                secondWindowSize: 'Size, inches',
+                secondWindowInfo: 'A separate window with the same text, {w} × {h} px (96 px/inch). Opens together with the projector.',
                 sectionParallel: 'Parallel translation',
                 parallelToggle: 'Two translations at once',
                 secondTranslation: 'Second translation',
@@ -575,6 +598,12 @@
             // Стан пульта помічника
             window.electronAPI.getRemoteInfo().then(updateRemoteInfoUI);
 
+            // Додаткове вікно показу
+            secondWindowToggle.checked = currentSettings.secondWindowEnabled === true;
+            secondWindowWidth.value = currentSettings.secondWindowWidthIn || 7.02;
+            secondWindowHeight.value = currentSettings.secondWindowHeightIn || 11.69;
+            updateSecondWindowUI();
+
             // Відображаємо стан паралельного перекладу
             parallelMode = currentSettings.parallelMode === true;
             secondaryTranslation = currentSettings.secondaryTranslation || secondaryTranslation;
@@ -605,6 +634,51 @@
 
         document.getElementById('projectorFontSelect').addEventListener('change', (e) => {
             window.electronAPI.updateProjectorSettings({ projectorFont: e.target.value });
+        });
+
+        // --- Додаткове вікно показу: перемикач і розмір у дюймах ---
+        const secondWindowToggle = document.getElementById('secondWindowToggle');
+        const secondWindowSizeRow = document.getElementById('secondWindowSizeRow');
+        const secondWindowInfo = document.getElementById('secondWindowInfo');
+        const secondWindowWidth = document.getElementById('secondWindowWidth');
+        const secondWindowHeight = document.getElementById('secondWindowHeight');
+        const SECOND_WINDOW_PPI = 96;
+
+        function secondWindowInches() {
+            const w = parseFloat(secondWindowWidth.value);
+            const h = parseFloat(secondWindowHeight.value);
+            return {
+                w: isFinite(w) && w > 0 ? w : 7.02,
+                h: isFinite(h) && h > 0 ? h : 11.69
+            };
+        }
+
+        function updateSecondWindowUI() {
+            const on = secondWindowToggle.checked;
+            secondWindowSizeRow.style.display = on ? 'flex' : 'none';
+            secondWindowInfo.style.display = on ? 'block' : 'none';
+            const { w, h } = secondWindowInches();
+            secondWindowInfo.textContent = t('secondWindowInfo', {
+                w: Math.round(w * SECOND_WINDOW_PPI),
+                h: Math.round(h * SECOND_WINDOW_PPI)
+            });
+        }
+
+        secondWindowToggle.addEventListener('change', () => {
+            updateSecondWindowUI();
+            window.electronAPI.updateProjectorSettings({ secondWindowEnabled: secondWindowToggle.checked });
+        });
+
+        // Розмір застосовуємо після завершення вводу (change), підказку в px — одразу
+        [secondWindowWidth, secondWindowHeight].forEach(input => {
+            input.addEventListener('input', updateSecondWindowUI);
+            input.addEventListener('change', () => {
+                const { w, h } = secondWindowInches();
+                secondWindowWidth.value = w;
+                secondWindowHeight.value = h;
+                updateSecondWindowUI();
+                window.electronAPI.updateProjectorSettings({ secondWindowWidthIn: w, secondWindowHeightIn: h });
+            });
         });
 
         themeSegment.addEventListener('click', (e) => {
