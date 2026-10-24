@@ -175,6 +175,12 @@
                                 <input type="number" id="secondWindowHeight" min="1" max="60" step="0.01" value="11.69" title="Висота">
                             </div>
                         </div>
+                        <div class="setting-row" id="secondWindowOffsetRow" style="display: none;">
+                            <span data-i18n="secondWindowOffset">Зсув тексту вгору, %</span>
+                            <div class="size-inputs">
+                                <input type="number" id="secondWindowOffset" min="0" max="40" step="1" value="10">
+                            </div>
+                        </div>
                         <div class="setting-info-text" id="secondWindowInfo" style="display: none;"></div>
                     </div>
                 </details>
@@ -308,6 +314,7 @@
                 reset: 'Скинути',
                 secondWindowToggle: 'Додаткове вікно показу',
                 secondWindowSize: 'Розмір, дюйми',
+                secondWindowOffset: 'Зсув тексту вгору, %',
                 secondWindowInfo: 'Окреме вікно з тим самим текстом, {w} × {h} px (96 px/дюйм). Відкривається разом із проектором.',
                 sectionParallel: 'Паралельний переклад',
                 parallelToggle: 'Два переклади одночасно',
@@ -395,6 +402,7 @@
                 reset: 'Reset',
                 secondWindowToggle: 'Additional display window',
                 secondWindowSize: 'Size, inches',
+                secondWindowOffset: 'Shift text up, %',
                 secondWindowInfo: 'A separate window with the same text, {w} × {h} px (96 px/inch). Opens together with the projector.',
                 sectionParallel: 'Parallel translation',
                 parallelToggle: 'Two translations at once',
@@ -602,6 +610,7 @@
             secondWindowToggle.checked = currentSettings.secondWindowEnabled === true;
             secondWindowWidth.value = currentSettings.secondWindowWidthIn || 7.02;
             secondWindowHeight.value = currentSettings.secondWindowHeightIn || 11.69;
+            secondWindowOffset.value = currentSettings.secondWindowTextOffset ?? 10;
             updateSecondWindowUI();
 
             // Відображаємо стан паралельного перекладу
@@ -642,6 +651,8 @@
         const secondWindowInfo = document.getElementById('secondWindowInfo');
         const secondWindowWidth = document.getElementById('secondWindowWidth');
         const secondWindowHeight = document.getElementById('secondWindowHeight');
+        const secondWindowOffsetRow = document.getElementById('secondWindowOffsetRow');
+        const secondWindowOffset = document.getElementById('secondWindowOffset');
         const SECOND_WINDOW_PPI = 96;
 
         function secondWindowInches() {
@@ -656,6 +667,7 @@
         function updateSecondWindowUI() {
             const on = secondWindowToggle.checked;
             secondWindowSizeRow.style.display = on ? 'flex' : 'none';
+            secondWindowOffsetRow.style.display = on ? 'flex' : 'none';
             secondWindowInfo.style.display = on ? 'block' : 'none';
             const { w, h } = secondWindowInches();
             secondWindowInfo.textContent = t('secondWindowInfo', {
@@ -667,6 +679,14 @@
         secondWindowToggle.addEventListener('change', () => {
             updateSecondWindowUI();
             window.electronAPI.updateProjectorSettings({ secondWindowEnabled: secondWindowToggle.checked });
+        });
+
+        // Зсув тексту застосовується одразу, поки крутиш значення
+        secondWindowOffset.addEventListener('input', () => {
+            let v = parseInt(secondWindowOffset.value, 10);
+            if (!isFinite(v)) return;
+            v = Math.max(0, Math.min(40, v));
+            window.electronAPI.updateProjectorSettings({ secondWindowTextOffset: v });
         });
 
         // Розмір застосовуємо після завершення вводу (change), підказку в px — одразу

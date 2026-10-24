@@ -35,6 +35,7 @@ let projectorSettings = {
   secondWindowEnabled: false, // Додаткове вікно показу з фіксованим розміром
   secondWindowWidthIn: 7.02, // Ширина додаткового вікна, дюйми
   secondWindowHeightIn: 11.69, // Висота додаткового вікна, дюйми
+  secondWindowTextOffset: 10, // Зсув тексту вгору в додатковому вікні, % висоти
   categoryColors: {
     pentateuch: '#FFDDC1',
     historical: '#CCE5FF',
@@ -499,10 +500,21 @@ function secondWindowSizePx() {
 
 function createSecondWindow() {
   const { width, height } = secondWindowSizePx();
+
+  // Як у PowerPoint: якщо є другий екран — відкриваємо на ньому, по центру
+  const primary = screen.getPrimaryDisplay();
+  const external = screen.getAllDisplays().find(d => d.id !== primary.id);
+  const area = (external || primary).workArea;
+  const x = Math.round(area.x + Math.max(0, (area.width - width) / 2));
+  const y = Math.round(area.y + Math.max(0, (area.height - height) / 2));
+
   secondWindow = new BrowserWindow({
+    x,
+    y,
     width,
     height,
     useContentSize: true, // розмір стосується саме області показу, без рамки
+    frame: false, // без верхньої смужки — лише текст на фоні
     resizable: false,
     title: 'Bible Projector — додаткове вікно',
     icon: path.join(__dirname, 'icon.png'),
@@ -513,7 +525,8 @@ function createSecondWindow() {
   secondWindow.setMenuBarVisibility(false);
   // projector.html має власний <title>; лишаємо назву вікна, щоб його було видно, що це додаткове
   secondWindow.on('page-title-updated', (e) => e.preventDefault());
-  secondWindow.loadFile('projector.html')
+  // Параметр second=1: сторінка знає, що це додаткове вікно (для свого зсуву тексту)
+  secondWindow.loadFile('projector.html', { query: { second: '1' } })
     .then(() => {
       if (secondWindow && !secondWindow.isDestroyed()) {
         secondWindow.webContents.send('settings-updated', settingsForProjector(projectorSettings));

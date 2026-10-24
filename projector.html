@@ -114,8 +114,24 @@
             'Verdana': "Verdana, Geneva, sans-serif"
         };
 
+        // Чи це додаткове вікно показу (main відкриває його з ?second=1)
+        const isSecondWindow = new URLSearchParams(location.search).get('second') === '1';
+
+        // Зсув тексту вгору в додатковому вікні: збільшуємо нижній відступ,
+        // щоб центр тексту піднявся на задані % висоти вікна
+        function applySecondWindowOffset(percent) {
+            const p = Math.max(0, Math.min(40, parseFloat(percent) || 0));
+            document.body.style.paddingBottom = p > 0 ? `calc(5% + ${2 * p}vh)` : '';
+            if (verseContainer.style.display !== 'none' && verseTextElement.innerText) {
+                fitVerseText();
+            }
+        }
+
         // Слухаємо оновлення налаштувань
         window.electronAPI.onSettingsUpdated((settings) => {
+            if (isSecondWindow && settings.hasOwnProperty('secondWindowTextOffset')) {
+                applySecondWindowOffset(settings.secondWindowTextOffset);
+            }
             // Оновлення кольору фону
             if (settings.hasOwnProperty('backgroundColor')) {
                 document.body.style.backgroundColor = settings.backgroundColor;
