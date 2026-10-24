@@ -181,6 +181,12 @@
                                 <input type="number" id="secondWindowOffset" min="0" max="40" step="1" value="10">
                             </div>
                         </div>
+                        <div class="setting-row" id="secondWindowMoveRow" style="display: none;">
+                            <span data-i18n="secondWindowMove">Екран</span>
+                            <div class="button-group">
+                                <button id="secondWindowMoveBtn" class="btn-sm" data-i18n="secondWindowMoveBtn">На інший екран</button>
+                            </div>
+                        </div>
                         <div class="setting-info-text" id="secondWindowInfo" style="display: none;"></div>
                     </div>
                 </details>
@@ -315,7 +321,10 @@
                 secondWindowToggle: 'Додаткове вікно показу',
                 secondWindowSize: 'Розмір, дюйми',
                 secondWindowOffset: 'Зсув тексту вгору, %',
-                secondWindowInfo: 'Окреме вікно з тим самим текстом, {w} × {h} px (96 px/дюйм). Відкривається разом із проектором.',
+                secondWindowMove: 'Екран',
+                secondWindowMoveBtn: 'На інший екран',
+                secondWindowOneDisplay: 'Підключено лише один екран.',
+                secondWindowInfo: 'Окреме вікно з тим самим текстом, {w} × {h} px (96 px/дюйм). Відкривається разом із проектором, його можна перетягувати мишкою.',
                 sectionParallel: 'Паралельний переклад',
                 parallelToggle: 'Два переклади одночасно',
                 secondTranslation: 'Другий переклад',
@@ -403,7 +412,10 @@
                 secondWindowToggle: 'Additional display window',
                 secondWindowSize: 'Size, inches',
                 secondWindowOffset: 'Shift text up, %',
-                secondWindowInfo: 'A separate window with the same text, {w} × {h} px (96 px/inch). Opens together with the projector.',
+                secondWindowMove: 'Display',
+                secondWindowMoveBtn: 'Move to other display',
+                secondWindowOneDisplay: 'Only one display is connected.',
+                secondWindowInfo: 'A separate window with the same text, {w} × {h} px (96 px/inch). Opens together with the projector and can be dragged with the mouse.',
                 sectionParallel: 'Parallel translation',
                 parallelToggle: 'Two translations at once',
                 secondTranslation: 'Second translation',
@@ -652,6 +664,7 @@
         const secondWindowWidth = document.getElementById('secondWindowWidth');
         const secondWindowHeight = document.getElementById('secondWindowHeight');
         const secondWindowOffsetRow = document.getElementById('secondWindowOffsetRow');
+        const secondWindowMoveRow = document.getElementById('secondWindowMoveRow');
         const secondWindowOffset = document.getElementById('secondWindowOffset');
         const SECOND_WINDOW_PPI = 96;
 
@@ -668,6 +681,7 @@
             const on = secondWindowToggle.checked;
             secondWindowSizeRow.style.display = on ? 'flex' : 'none';
             secondWindowOffsetRow.style.display = on ? 'flex' : 'none';
+            secondWindowMoveRow.style.display = on ? 'flex' : 'none';
             secondWindowInfo.style.display = on ? 'block' : 'none';
             const { w, h } = secondWindowInches();
             secondWindowInfo.textContent = t('secondWindowInfo', {
@@ -679,6 +693,11 @@
         secondWindowToggle.addEventListener('change', () => {
             updateSecondWindowUI();
             window.electronAPI.updateProjectorSettings({ secondWindowEnabled: secondWindowToggle.checked });
+        });
+
+        document.getElementById('secondWindowMoveBtn').addEventListener('click', async () => {
+            const r = await window.electronAPI.secondWindowNextDisplay();
+            if (r && r.displays < 2) showToast(t('secondWindowOneDisplay'));
         });
 
         // Зсув тексту застосовується одразу, поки крутиш значення

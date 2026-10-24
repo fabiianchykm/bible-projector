@@ -36,6 +36,7 @@ let projectorSettings = {
   secondWindowWidthIn: 7.02, // Ширина додаткового вікна, дюйми
   secondWindowHeightIn: 11.69, // Висота додаткового вікна, дюйми
   secondWindowTextOffset: 10, // Зсув тексту вгору в додатковому вікні, % висоти
+  secondWindowPos: null, // Збережене положення додаткового вікна {x, y}; null — по центру другого екрана
   categoryColors: {
     pentateuch: '#FFDDC1',
     historical: '#CCE5FF',
@@ -498,15 +499,49 @@ function secondWindowSizePx() {
   };
 }
 
+function externalDisplay() {
+  const primary = screen.getPrimaryDisplay();
+  return screen.getAllDisplays().find(d => d.id !== primary.id) || null;
+}
+
+function centeredOnDisplay(display, width, height) {
+  const area = display.workArea;
+  return {
+    x: Math.round(area.x + Math.max(0, (area.width - width) / 2)),
+    y: Math.round(area.y + Math.max(0, (area.height - height) / 2))
+  };
+}
+
+// Переносить додаткове вікно на наступний екран (по колу), по центру
+function moveSecondWindowToNextDisplay() {
+  if (!secondWindow || secondWindow.isDestroyed()) return { moved: false, displays: screen.getAllDisplays().length };
+  const displays = screen.getAllDisplays();
+  const current = screen.getDisplayMatching(secondWindow.getBounds());
+  const idx = displays.findIndex(d => d.id === current.id);
+  const next = displays[(idx + 1) % displays.length];
+  const [w, h] = secondWindow.getSize();
+  const { x, y } = centeredOnDisplay(next, w, h);
+  secondWindow.setPosition(x, y);
+  projectorSettings.secondWindowPos = { x, y };
+  saveSettings();
+  return { moved: true, displays: displays.length };
+}
+
 function createSecondWindow() {
   const { width, height } = secondWindowSizePx();
 
-  // Як у PowerPoint: якщо є другий екран — відкриваємо на ньому, по центру
-  const primary = screen.getPrimaryDisplay();
-  const external = screen.getAllDisplays().find(d => d.id !== primary.id);
-  const area = (external || primary).workArea;
-  const x = Math.round(area.x + Math.max(0, (area.width - width) / 2));
-  const y = Math.round(area.y + Math.max(0, (area.height - height) / 2));
+  // Збережене положення, якщо воно ще потрапляє на якийсь екран;
+  // інакше — як у PowerPoint: по центру другого екрана
+  let { x, y } = centeredOnDisplay(externalDisplay() || screen.getPrimaryDisplay(), width, height);
+  const saved = projectorSettings.secondWindowPos;
+  if (saved && isFinite(saved.x) && isFinite(saved.y)) {
+    const onScreen = screen.getAllDisplays().some(d => {
+      const b = d.bounds;
+      return saved.x + width / 2 >= b.x && saved.x + width / 2 <= b.x + b.width
+        && saved.y >= b.y && saved.y <= b.y + b.height;
+    });
+    if (onScreen) ({ x, y } = saved);
+  }
 
   secondWindow = new BrowserWindow({
     x,
@@ -533,6 +568,19 @@ function createSecondWindow() {
       }
     })
     .catch(err => console.error('[main] Не вдалося завантажити projector.html у додаткове вікно:', err));
+
+  // Запам'ятовуємо, куди користувач перетягнув вікно.
+  // Під час закриття macOS теж надсилає 'moved' з хибними координатами — ігноруємо.
+  let closing = false;
+  const createdAt = Date.now();
+  secondWindow.on('close', () => { closing = true; });
+  secondWindow.on('moved', () => {
+    if (closing || !secondWindow || secondWindow.isDestroyed()) return;
+    if (Date.now() - createdAt < 1000) return; // не користувацький рух при створенні
+    const [wx, wy] = secondWindow.getPosition();
+    projectorSettings.secondWindowPos = { x: wx, y: wy };
+    saveSettings();
+  });
 
   secondWindow.on('closed', () => {
     console.log('[main] Додаткове вікно показу закрито.');
@@ -1356,6 +1404,8 @@ function stopRemoteServer() {
 }
 
 ipcMain.handle('get-remote-info', () => ({ enabled: !!remoteServer, url: remoteUrl() }));
+
+ipcMain.handle('second-window-next-display', () => moveSecondWindowToNextDisplay());
 
 ipcMain.handle('set-remote-enabled', (event, enabled) => {
   projectorSettings.remoteEnabled = !!enabled;

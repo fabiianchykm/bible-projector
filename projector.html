@@ -117,6 +117,11 @@
         // Чи це додаткове вікно показу (main відкриває його з ?second=1)
         const isSecondWindow = new URLSearchParams(location.search).get('second') === '1';
 
+        // Додаткове вікно без рамки: його можна тягнути мишкою за будь-яке місце
+        if (isSecondWindow) {
+            document.body.style.webkitAppRegion = 'drag';
+        }
+
         // Зсув тексту вгору в додатковому вікні: збільшуємо нижній відступ,
         // щоб центр тексту піднявся на задані % висоти вікна
         function applySecondWindowOffset(percent) {

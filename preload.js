@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   // API пульта помічника
   getRemoteInfo: () => ipcRenderer.invoke('get-remote-info'),
+  secondWindowNextDisplay: () => ipcRenderer.invoke('second-window-next-display'),
   setRemoteEnabled: (enabled) => ipcRenderer.invoke('set-remote-enabled', enabled),
   onRemoteProposal: (callback) => ipcRenderer.on('remote-proposal', (event, proposal) => callback(proposal)),
   openDonate: () => ipcRenderer.send('open-donate'),
