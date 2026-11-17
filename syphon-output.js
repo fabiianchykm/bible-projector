@@ -43,18 +43,25 @@ function publish(rgba, width, height) {
     rgba,
     { x: 0, y: 0, width, height },
     { width, height },
-    true // кадр іде зверху вниз; Syphon-клієнти (ProPresenter) чекають GL-орієнтацію, тож позначаємо як перевернутий
+    false // рядки вже перевернуті в toRGBA (GL-орієнтація, якої чекає ProPresenter), тож прапорець не потрібен
   );
 }
 
-// BGRA (bitmap Electron) -> RGBA (чекає node-syphon)
-function toRGBA(bitmap) {
+// BGRA (bitmap Electron, рядки зверху вниз) -> RGBA з рядками знизу вгору.
+// Syphon-клієнти (ProPresenter) читають поверхню як GL-текстуру з початком
+// унизу, тому перевертаємо рядки самі замість прапорця flipped у сервері.
+function toRGBA(bitmap, width, height) {
   const rgba = new Uint8ClampedArray(bitmap.length);
-  for (let i = 0; i < bitmap.length; i += 4) {
-    rgba[i] = bitmap[i + 2];
-    rgba[i + 1] = bitmap[i + 1];
-    rgba[i + 2] = bitmap[i];
-    rgba[i + 3] = bitmap[i + 3];
+  const rowBytes = width * 4;
+  for (let y = 0; y < height; y++) {
+    const src = y * rowBytes;
+    const dst = (height - 1 - y) * rowBytes;
+    for (let i = 0; i < rowBytes; i += 4) {
+      rgba[dst + i] = bitmap[src + i + 2];
+      rgba[dst + i + 1] = bitmap[src + i + 1];
+      rgba[dst + i + 2] = bitmap[src + i];
+      rgba[dst + i + 3] = bitmap[src + i + 3];
+    }
   }
   return rgba;
 }
@@ -92,7 +99,7 @@ function start({ width, height, onLoaded }) {
   win.webContents.on('paint', (event, dirty, image) => {
     if (!server) return;
     const size = image.getSize();
-    const rgba = toRGBA(image.toBitmap());
+    const rgba = toRGBA(image.toBitmap(), size.width, size.height);
     lastFrame = { rgba, width: size.width, height: size.height };
     publish(rgba, size.width, size.height);
     frames++;
