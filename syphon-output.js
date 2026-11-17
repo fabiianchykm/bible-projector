@@ -43,7 +43,7 @@ function publish(rgba, width, height) {
     rgba,
     { x: 0, y: 0, width, height },
     { width, height },
-    false // кадр уже йде зверху вниз, як у Metal; перевертати не треба
+    true // кадр іде зверху вниз; Syphon-клієнти (ProPresenter) чекають GL-орієнтацію, тож позначаємо як перевернутий
   );
 }
 
@@ -79,6 +79,8 @@ function start({ width, height, onLoaded }) {
     width: Math.round(width / scale),
     height: Math.round(height / scale),
     show: false,
+    frame: false,
+    roundedCorners: false, // без заокруглених кутів macOS — кадр має бути суцільним прямокутником
     webPreferences: {
       offscreen: true,
       zoomFactor: 1 / scale,
@@ -102,8 +104,8 @@ function start({ width, height, onLoaded }) {
     if (onLoaded) onLoaded(win);
   });
 
-  // second=1 — та сама поведінка, що в додаткового вікна (зсув тексту тощо)
-  win.loadFile('projector.html', { query: { second: '1', syphon: '1' } })
+  // syphon=1 — сторінка застосовує власний масштаб тексту для Syphon-кадру
+  win.loadFile('projector.html', { query: { syphon: '1' } })
     .catch(err => console.error('[syphon] Не вдалося завантажити projector.html:', err));
 
   keepalive = setInterval(() => {

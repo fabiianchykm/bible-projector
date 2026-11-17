@@ -196,6 +196,20 @@
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
+                        <div class="setting-row" id="syphonSizeRow" style="display: none;">
+                            <span data-i18n="syphonSize">Кадр Syphon, px</span>
+                            <div class="size-inputs">
+                                <input type="number" id="syphonWidth" min="320" max="7680" step="1" value="1920" title="Ширина">
+                                <span class="size-inputs-x">×</span>
+                                <input type="number" id="syphonHeight" min="320" max="7680" step="1" value="1080" title="Висота">
+                            </div>
+                        </div>
+                        <div class="setting-row" id="syphonScaleRow" style="display: none;">
+                            <span data-i18n="syphonScale">Розмір тексту в Syphon, %</span>
+                            <div class="size-inputs">
+                                <input type="number" id="syphonScale" min="30" max="300" step="5" value="100">
+                            </div>
+                        </div>
                         <div class="setting-info-text" id="syphonInfo" style="display: none;"></div>
                     </div>
                 </details>
@@ -334,8 +348,9 @@
                 secondWindowMoveBtn: 'На інший екран',
                 secondWindowOneDisplay: 'Підключено лише один екран.',
                 syphonToggle: 'Syphon-вихід (ProPresenter, OBS)',
-                syphonInfo: 'Джерело «{name}», кадр {w} × {h} px (розмір і зсув тексту беруться з додаткового вікна). У ProPresenter: Inputs → Syphon → «{name}».',
-                syphonSizeHint: 'Розмір кадру Syphon: {w} × {h} px',
+                syphonInfo: 'Джерело «{name}». Розмір кадру краще ставити як у екрана виводу ProPresenter. У ProPresenter: Inputs → Syphon → «{name}».',
+                syphonSize: 'Кадр Syphon, px',
+                syphonScale: 'Розмір тексту в Syphon, %',
                 secondWindowInfo: 'Окреме вікно з тим самим текстом, {w} × {h} px (96 px/дюйм). Відкривається разом із проектором, його можна перетягувати мишкою.',
                 sectionParallel: 'Паралельний переклад',
                 parallelToggle: 'Два переклади одночасно',
@@ -428,8 +443,9 @@
                 secondWindowMoveBtn: 'Move to other display',
                 secondWindowOneDisplay: 'Only one display is connected.',
                 syphonToggle: 'Syphon output (ProPresenter, OBS)',
-                syphonInfo: 'Source "{name}", frame {w} × {h} px (size and text offset are shared with the additional window). In ProPresenter: Inputs → Syphon → "{name}".',
-                syphonSizeHint: 'Syphon frame size: {w} × {h} px',
+                syphonInfo: 'Source "{name}". Set the frame size to match the ProPresenter output screen. In ProPresenter: Inputs → Syphon → "{name}".',
+                syphonSize: 'Syphon frame, px',
+                syphonScale: 'Text size in Syphon, %',
                 secondWindowInfo: 'A separate window with the same text, {w} × {h} px (96 px/inch). Opens together with the projector and can be dragged with the mouse.',
                 sectionParallel: 'Parallel translation',
                 parallelToggle: 'Two translations at once',
@@ -639,6 +655,9 @@
             secondWindowHeight.value = currentSettings.secondWindowHeightIn || 11.69;
             secondWindowOffset.value = currentSettings.secondWindowTextOffset ?? 10;
             syphonToggle.checked = currentSettings.syphonEnabled === true;
+            syphonWidth.value = currentSettings.syphonWidth || 1920;
+            syphonHeight.value = currentSettings.syphonHeight || 1080;
+            syphonScale.value = currentSettings.syphonTextScale || 100;
             updateSecondWindowUI();
             refreshSyphonUI();
 
@@ -685,6 +704,11 @@
         const syphonRow = document.getElementById('syphonRow');
         const syphonToggle = document.getElementById('syphonToggle');
         const syphonInfo = document.getElementById('syphonInfo');
+        const syphonSizeRow = document.getElementById('syphonSizeRow');
+        const syphonScaleRow = document.getElementById('syphonScaleRow');
+        const syphonWidth = document.getElementById('syphonWidth');
+        const syphonHeight = document.getElementById('syphonHeight');
+        const syphonScale = document.getElementById('syphonScale');
         const secondWindowOffset = document.getElementById('secondWindowOffset');
         const SECOND_WINDOW_PPI = 96;
 
@@ -699,9 +723,8 @@
 
         function updateSecondWindowUI() {
             const on = secondWindowToggle.checked;
-            const sizeNeeded = on || syphonToggle.checked; // розмір і зсув спільні з Syphon
-            secondWindowSizeRow.style.display = sizeNeeded ? 'flex' : 'none';
-            secondWindowOffsetRow.style.display = sizeNeeded ? 'flex' : 'none';
+            secondWindowSizeRow.style.display = on ? 'flex' : 'none';
+            secondWindowOffsetRow.style.display = on ? 'flex' : 'none';
             secondWindowMoveRow.style.display = on ? 'flex' : 'none';
             secondWindowInfo.style.display = on ? 'block' : 'none';
             const { w, h } = secondWindowInches();
@@ -721,21 +744,30 @@
             const st = await window.electronAPI.getSyphonStatus();
             syphonRow.style.display = st.available ? 'flex' : 'none';
             const on = syphonToggle.checked && st.available;
+            syphonSizeRow.style.display = on ? 'flex' : 'none';
+            syphonScaleRow.style.display = on ? 'flex' : 'none';
             syphonInfo.style.display = on ? 'block' : 'none';
-            if (on) {
-                const { w, h } = secondWindowInches();
-                syphonInfo.textContent = t('syphonInfo', {
-                    name: st.name,
-                    w: Math.round(w * SECOND_WINDOW_PPI),
-                    h: Math.round(h * SECOND_WINDOW_PPI)
-                });
-            }
+            if (on) syphonInfo.textContent = t('syphonInfo', { name: st.name });
         }
 
         syphonToggle.addEventListener('change', () => {
             window.electronAPI.updateProjectorSettings({ syphonEnabled: syphonToggle.checked });
-            updateSecondWindowUI();
             refreshSyphonUI();
+        });
+
+        // Розмір кадру — після завершення вводу; розмір тексту — одразу
+        [syphonWidth, syphonHeight].forEach(input => {
+            input.addEventListener('change', () => {
+                const clamp = (el, def) => { let v = parseInt(el.value, 10); if (!isFinite(v)) v = def; v = Math.max(320, Math.min(7680, v)); el.value = v; return v; };
+                const w = clamp(syphonWidth, 1920), h = clamp(syphonHeight, 1080);
+                window.electronAPI.updateProjectorSettings({ syphonWidth: w, syphonHeight: h });
+            });
+        });
+        syphonScale.addEventListener('input', () => {
+            let v = parseInt(syphonScale.value, 10);
+            if (!isFinite(v)) return;
+            v = Math.max(30, Math.min(300, v));
+            window.electronAPI.updateProjectorSettings({ syphonTextScale: v });
         });
 
         document.getElementById('secondWindowMoveBtn').addEventListener('click', async () => {
@@ -760,7 +792,6 @@
                 secondWindowHeight.value = h;
                 updateSecondWindowUI();
                 window.electronAPI.updateProjectorSettings({ secondWindowWidthIn: w, secondWindowHeightIn: h });
-                refreshSyphonUI();
             });
         });
 

@@ -38,7 +38,10 @@ let projectorSettings = {
   secondWindowHeightIn: 11.69, // Висота додаткового вікна, дюйми
   secondWindowTextOffset: 10, // Зсув тексту вгору в додатковому вікні, % висоти
   secondWindowPos: null, // Збережене положення додаткового вікна {x, y}; null — по центру другого екрана
-  syphonEnabled: false, // Віддавати картинку через Syphon (macOS); розмір кадру — як у додаткового вікна
+  syphonEnabled: false, // Віддавати картинку через Syphon (macOS)
+  syphonWidth: 1920, // Розмір Syphon-кадру, px (як екран виводу в ProPresenter)
+  syphonHeight: 1080,
+  syphonTextScale: 100, // Розмір тексту в Syphon-кадрі, %
   categoryColors: {
     pentateuch: '#FFDDC1',
     historical: '#CCE5FF',
@@ -487,13 +490,22 @@ function projectorWindows() {
 // Останній показаний вірш — щоб вікно, відкрите пізніше, одразу його показало
 let lastVerseData = null;
 
+// Розмір Syphon-кадру в пікселях (межі: 320..7680)
+function syphonSizePx() {
+  const clamp = (v, def) => {
+    const n = parseInt(v, 10);
+    return Math.min(7680, Math.max(320, isFinite(n) && n > 0 ? n : def));
+  };
+  return { width: clamp(projectorSettings.syphonWidth, 1920), height: clamp(projectorSettings.syphonHeight, 1080) };
+}
+
 // Узгоджує Syphon-вихід з налаштуваннями: запускає, зупиняє або міняє розмір кадру
 function syncSyphon() {
   if (projectorSettings.syphonEnabled !== true || !syphonOutput.isAvailable()) {
     syphonOutput.stop();
     return;
   }
-  const { width, height } = secondWindowSizePx();
+  const { width, height } = syphonSizePx();
   syphonOutput.start({
     width,
     height,
@@ -572,6 +584,7 @@ function createSecondWindow() {
     height,
     useContentSize: true, // розмір стосується саме області показу, без рамки
     frame: false, // без верхньої смужки — лише текст на фоні
+    roundedCorners: false, // без заокруглених кутів macOS по краях вікна
     resizable: false,
     title: 'Bible Projector — додаткове вікно',
     icon: path.join(__dirname, 'icon.png'),
@@ -877,7 +890,7 @@ ipcMain.on('update-projector-settings', (event, settings) => {
     syncSecondWindow();
   }
   // Syphon-вихід: увімкнення/вимкнення або зміна розміру кадру
-  if ('syphonEnabled' in settings || 'secondWindowWidthIn' in settings || 'secondWindowHeightIn' in settings) {
+  if ('syphonEnabled' in settings || 'syphonWidth' in settings || 'syphonHeight' in settings) {
     syncSyphon();
   }
 });
