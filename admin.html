@@ -188,6 +188,15 @@
                             </div>
                         </div>
                         <div class="setting-info-text" id="secondWindowInfo" style="display: none;"></div>
+
+                        <div class="setting-row" id="syphonRow" style="display: none;">
+                            <span data-i18n="syphonToggle">Syphon-вихід (ProPresenter, OBS)</span>
+                            <label class="toggle">
+                                <input type="checkbox" id="syphonToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-info-text" id="syphonInfo" style="display: none;"></div>
                     </div>
                 </details>
 
@@ -324,6 +333,9 @@
                 secondWindowMove: 'Екран',
                 secondWindowMoveBtn: 'На інший екран',
                 secondWindowOneDisplay: 'Підключено лише один екран.',
+                syphonToggle: 'Syphon-вихід (ProPresenter, OBS)',
+                syphonInfo: 'Джерело «{name}», кадр {w} × {h} px (розмір і зсув тексту беруться з додаткового вікна). У ProPresenter: Inputs → Syphon → «{name}».',
+                syphonSizeHint: 'Розмір кадру Syphon: {w} × {h} px',
                 secondWindowInfo: 'Окреме вікно з тим самим текстом, {w} × {h} px (96 px/дюйм). Відкривається разом із проектором, його можна перетягувати мишкою.',
                 sectionParallel: 'Паралельний переклад',
                 parallelToggle: 'Два переклади одночасно',
@@ -415,6 +427,9 @@
                 secondWindowMove: 'Display',
                 secondWindowMoveBtn: 'Move to other display',
                 secondWindowOneDisplay: 'Only one display is connected.',
+                syphonToggle: 'Syphon output (ProPresenter, OBS)',
+                syphonInfo: 'Source "{name}", frame {w} × {h} px (size and text offset are shared with the additional window). In ProPresenter: Inputs → Syphon → "{name}".',
+                syphonSizeHint: 'Syphon frame size: {w} × {h} px',
                 secondWindowInfo: 'A separate window with the same text, {w} × {h} px (96 px/inch). Opens together with the projector and can be dragged with the mouse.',
                 sectionParallel: 'Parallel translation',
                 parallelToggle: 'Two translations at once',
@@ -492,7 +507,7 @@
         function t(key, vars) {
             let s = (I18N[currentLang] && I18N[currentLang][key]) ?? I18N.uk[key] ?? key;
             if (typeof s === 'string' && vars) {
-                for (const k in vars) s = s.replace(`{${k}}`, vars[k]);
+                for (const k in vars) s = s.split(`{${k}}`).join(vars[k]);
             }
             return s;
         }
@@ -623,7 +638,9 @@
             secondWindowWidth.value = currentSettings.secondWindowWidthIn || 7.02;
             secondWindowHeight.value = currentSettings.secondWindowHeightIn || 11.69;
             secondWindowOffset.value = currentSettings.secondWindowTextOffset ?? 10;
+            syphonToggle.checked = currentSettings.syphonEnabled === true;
             updateSecondWindowUI();
+            refreshSyphonUI();
 
             // Відображаємо стан паралельного перекладу
             parallelMode = currentSettings.parallelMode === true;
@@ -665,6 +682,9 @@
         const secondWindowHeight = document.getElementById('secondWindowHeight');
         const secondWindowOffsetRow = document.getElementById('secondWindowOffsetRow');
         const secondWindowMoveRow = document.getElementById('secondWindowMoveRow');
+        const syphonRow = document.getElementById('syphonRow');
+        const syphonToggle = document.getElementById('syphonToggle');
+        const syphonInfo = document.getElementById('syphonInfo');
         const secondWindowOffset = document.getElementById('secondWindowOffset');
         const SECOND_WINDOW_PPI = 96;
 
@@ -679,8 +699,9 @@
 
         function updateSecondWindowUI() {
             const on = secondWindowToggle.checked;
-            secondWindowSizeRow.style.display = on ? 'flex' : 'none';
-            secondWindowOffsetRow.style.display = on ? 'flex' : 'none';
+            const sizeNeeded = on || syphonToggle.checked; // розмір і зсув спільні з Syphon
+            secondWindowSizeRow.style.display = sizeNeeded ? 'flex' : 'none';
+            secondWindowOffsetRow.style.display = sizeNeeded ? 'flex' : 'none';
             secondWindowMoveRow.style.display = on ? 'flex' : 'none';
             secondWindowInfo.style.display = on ? 'block' : 'none';
             const { w, h } = secondWindowInches();
@@ -693,6 +714,28 @@
         secondWindowToggle.addEventListener('change', () => {
             updateSecondWindowUI();
             window.electronAPI.updateProjectorSettings({ secondWindowEnabled: secondWindowToggle.checked });
+        });
+
+        // --- Syphon-вихід (лише macOS; рядок ховаємо, якщо недоступний) ---
+        async function refreshSyphonUI() {
+            const st = await window.electronAPI.getSyphonStatus();
+            syphonRow.style.display = st.available ? 'flex' : 'none';
+            const on = syphonToggle.checked && st.available;
+            syphonInfo.style.display = on ? 'block' : 'none';
+            if (on) {
+                const { w, h } = secondWindowInches();
+                syphonInfo.textContent = t('syphonInfo', {
+                    name: st.name,
+                    w: Math.round(w * SECOND_WINDOW_PPI),
+                    h: Math.round(h * SECOND_WINDOW_PPI)
+                });
+            }
+        }
+
+        syphonToggle.addEventListener('change', () => {
+            window.electronAPI.updateProjectorSettings({ syphonEnabled: syphonToggle.checked });
+            updateSecondWindowUI();
+            refreshSyphonUI();
         });
 
         document.getElementById('secondWindowMoveBtn').addEventListener('click', async () => {
@@ -717,6 +760,7 @@
                 secondWindowHeight.value = h;
                 updateSecondWindowUI();
                 window.electronAPI.updateProjectorSettings({ secondWindowWidthIn: w, secondWindowHeightIn: h });
+                refreshSyphonUI();
             });
         });
 

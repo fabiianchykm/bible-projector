@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, screen, nativeTheme, dialog, shell, Menu } = require('electron');
+const syphonOutput = require('./syphon-output'); // Syphon-вихід для ProPresenter/OBS (macOS)
 const path = require('path');
 const url = require('url');
 const Database = require('better-sqlite3');
@@ -37,6 +38,7 @@ let projectorSettings = {
   secondWindowHeightIn: 11.69, // Висота додаткового вікна, дюйми
   secondWindowTextOffset: 10, // Зсув тексту вгору в додатковому вікні, % висоти
   secondWindowPos: null, // Збережене положення додаткового вікна {x, y}; null — по центру другого екрана
+  syphonEnabled: false, // Віддавати картинку через Syphon (macOS); розмір кадру — як у додаткового вікна
   categoryColors: {
     pentateuch: '#FFDDC1',
     historical: '#CCE5FF',
@@ -477,9 +479,29 @@ function settingsForProjector(settings) {
   return out;
 }
 
-// Усі відкриті вікна показу (основне + додаткове)
+// Усі відкриті вікна показу (основне + додаткове + невидиме для Syphon)
 function projectorWindows() {
-  return [projectorWindow, secondWindow].filter(w => w && !w.isDestroyed());
+  return [projectorWindow, secondWindow, syphonOutput.window()].filter(w => w && !w.isDestroyed());
+}
+
+// Останній показаний вірш — щоб вікно, відкрите пізніше, одразу його показало
+let lastVerseData = null;
+
+// Узгоджує Syphon-вихід з налаштуваннями: запускає, зупиняє або міняє розмір кадру
+function syncSyphon() {
+  if (projectorSettings.syphonEnabled !== true || !syphonOutput.isAvailable()) {
+    syphonOutput.stop();
+    return;
+  }
+  const { width, height } = secondWindowSizePx();
+  syphonOutput.start({
+    width,
+    height,
+    onLoaded: (w) => {
+      w.webContents.send('settings-updated', settingsForProjector(projectorSettings));
+      if (lastVerseData) w.webContents.send('display-verse', lastVerseData);
+    }
+  });
 }
 
 function sendToProjectors(channel, data) {
@@ -565,6 +587,7 @@ function createSecondWindow() {
     .then(() => {
       if (secondWindow && !secondWindow.isDestroyed()) {
         secondWindow.webContents.send('settings-updated', settingsForProjector(projectorSettings));
+        if (lastVerseData) secondWindow.webContents.send('display-verse', lastVerseData);
       }
     })
     .catch(err => console.error('[main] Не вдалося завантажити projector.html у додаткове вікно:', err));
@@ -615,6 +638,9 @@ app.whenReady().then(() => {
   // Завантажуємо збережені налаштування на старті
   loadSettings();
   applyThemeSetting(projectorSettings.theme);
+
+  // Syphon-вихід стартує одразу, щоб ProPresenter бачив джерело без відкриття проектора
+  syncSyphon();
 
   const translations = getAllTranslations();
 
@@ -850,6 +876,10 @@ ipcMain.on('update-projector-settings', (event, settings) => {
   if ('secondWindowEnabled' in settings || 'secondWindowWidthIn' in settings || 'secondWindowHeightIn' in settings) {
     syncSecondWindow();
   }
+  // Syphon-вихід: увімкнення/вимкнення або зміна розміру кадру
+  if ('syphonEnabled' in settings || 'secondWindowWidthIn' in settings || 'secondWindowHeightIn' in settings) {
+    syncSyphon();
+  }
 });
 
 // Команда на отримання поточних налаштувань
@@ -859,6 +889,7 @@ ipcMain.handle('get-settings', () => {
 
 // Команда на показ вірша
 ipcMain.on('show-verse', (event, verseData) => {
+  lastVerseData = verseData;
   if (projectorWindows().length) {
     console.log(`[main] Надсилаємо дані у проектор:`, verseData);
     // Надсилаємо дані в усі вікна показу (основне + додаткове)
@@ -1406,6 +1437,10 @@ function stopRemoteServer() {
 ipcMain.handle('get-remote-info', () => ({ enabled: !!remoteServer, url: remoteUrl() }));
 
 ipcMain.handle('second-window-next-display', () => moveSecondWindowToNextDisplay());
+
+ipcMain.handle('get-syphon-status', () => syphonOutput.status());
+
+app.on('before-quit', () => syphonOutput.stop());
 
 ipcMain.handle('set-remote-enabled', (event, enabled) => {
   projectorSettings.remoteEnabled = !!enabled;
