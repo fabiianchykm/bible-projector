@@ -1,6 +1,6 @@
 {
   "name": "bible-projector",
-  "version": "1.0.24",
+  "version": "1.0.25",
   "description": "Програма для виводу місць з Біблії на проектор",
   "main": "main.js",
   "scripts": {
